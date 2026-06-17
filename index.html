@@ -1,318 +1,801 @@
-#!/usr/bin/env python3
-"""
-Sox Daily Recap — automated morning podcast pipeline.
-
-Fetches last night's Red Sox result from the MLB Stats API, writes a two-host
-script with Claude, synthesises the voices with ElevenLabs, stitches them into
-one MP3, and saves it to ~/Desktop/Sox Daily Recap/.
-
-Usage:
-    python pipeline.py              # recap for yesterday
-    python pipeline.py 2025-04-01  # recap for a specific date
-"""
-
-import logging
-import os
-import sys
-import tempfile
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Optional
-
-import requests
-from anthropic import Anthropic
-from dotenv import load_dotenv
-from pydub import AudioSegment
-
-# Load .env sitting next to this script
-load_dotenv(Path(__file__).parent / ".env", override=True)
-
-# ── Config ─────────────────────────────────────────────────────────────────────
-ANTHROPIC_API_KEY  = os.environ.get("ANTHROPIC_API_KEY",  "")
-ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
-HENRY_VOICE_ID     = os.environ.get("HENRY_VOICE_ID",     "")
-DAD_VOICE_ID       = os.environ.get("DAD_VOICE_ID",       "")
-ELEVENLABS_MODEL   = os.environ.get("ELEVENLABS_MODEL",   "eleven_turbo_v2_5")
-
-# Where episodes are saved. Override with OUTPUT_DIR env var.
-_raw_out   = os.environ.get("OUTPUT_DIR", str(Path.home() / "Desktop" / "Sox Daily Recap"))
-OUTPUT_DIR = Path(_raw_out).expanduser()
-
-RED_SOX_TEAM_ID   = 111   # MLB Stats API team ID for Boston Red Sox
-ELEVENLABS_BASE   = "https://api.elevenlabs.io/v1"
-
-# ── Logging ────────────────────────────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%H:%M:%S",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-log = logging.getLogger(__name__)
-
-
-# ── Config validation ──────────────────────────────────────────────────────────
-def _check_config() -> None:
-    missing = [
-        name for name, val in {
-            "ANTHROPIC_API_KEY":  ANTHROPIC_API_KEY,
-            "ELEVENLABS_API_KEY": ELEVENLABS_API_KEY,
-            "HENRY_VOICE_ID":     HENRY_VOICE_ID,
-            "DAD_VOICE_ID":       DAD_VOICE_ID,
-        }.items() if not val
-    ]
-    if missing:
-        log.error("Missing required env vars: %s", ", ".join(missing))
-        log.error("Copy .env.example → .env and fill in your credentials.")
-        sys.exit(1)
-
-
-# ── MLB Stats API ──────────────────────────────────────────────────────────────
-def fetch_game(date_str: str) -> Optional[dict]:
-    """
-    Fetch the Red Sox game summary for date_str (YYYY-MM-DD).
-    Returns a dict of key stats, or None if the Sox had an off day.
-    """
-    url = (
-        "https://statsapi.mlb.com/api/v1/schedule"
-        f"?sportId=1&teamId={RED_SOX_TEAM_ID}&date={date_str}"
-        "&hydrate=linescore,decisions"
-    )
-    try:
-        r = requests.get(url, timeout=15)
-        r.raise_for_status()
-    except requests.RequestException as exc:
-        log.error("MLB Stats API error: %s", exc)
-        raise
-
-    dates = r.json().get("dates", [])
-    if not dates or not dates[0].get("games"):
-        return None   # off day or postponed
-
-    return _parse_game(dates[0]["games"][0])
-
-
-def _parse_game(raw: dict) -> dict:
-    state = raw.get("status", {}).get("abstractGameState", "Unknown")
-    if state != "Final":
-        return {"state": state}
-
-    away = raw["teams"]["away"]
-    home = raw["teams"]["home"]
-    sox_side = "away" if away["team"]["id"] == RED_SOX_TEAM_ID else "home"
-    opp_side = "home" if sox_side == "away" else "away"
-
-    sox = raw["teams"][sox_side]
-    opp = raw["teams"][opp_side]
-    dec = raw.get("decisions", {})
-
-    return {
-        "state":            "Final",
-        "result":           "Win" if sox.get("isWinner") else "Loss",
-        "opponent":         opp["team"]["name"],
-        "sox_score":        sox.get("score", 0),
-        "opp_score":        opp.get("score", 0),
-        "home_away":        sox_side,
-        "winning_pitcher":  dec.get("winner", {}).get("fullName", "Unknown"),
-        "losing_pitcher":   dec.get("loser",  {}).get("fullName", "Unknown"),
-        "save_pitcher":     dec.get("save",   {}).get("fullName"),
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>DY 9U All-Stars Lineup Manager</title>
+<style>*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}body{background:#0d1a0f;color:#fff;font-family:'Helvetica Neue',Arial,sans-serif;min-height:100vh;overscroll-behavior:none}button{cursor:pointer;font-family:inherit}input{font-family:inherit}:root{--green:#1a5c2a;--green-l:#2a7a3a;--yellow:#e8e800;--dark:#0d1a0f;--card:#0d160f;--card2:#111a12;}#app{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}.header{background:#0a120c;border-bottom:3px solid var(--green);padding:12px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0}.header img{width:54px;height:54px;object-fit:contain;flex-shrink:0}.header-title{color:var(--yellow);font-weight:900;font-size:18px;letter-spacing:2px;line-height:1.1}.header-sub{color:var(--green-l);font-size:11px;font-weight:600;letter-spacing:1px}.tabs{display:flex;background:#0a120c;border-bottom:1px solid rgba(26,92,42,.3);flex-shrink:0}.tab{flex:1;padding:11px 2px;background:none;border:none;color:#555;font-weight:700;font-size:10px;letter-spacing:.5px;border-bottom:2px solid transparent;transition:color .15s}.tab.active{color:var(--yellow);border-bottom:2px solid var(--yellow)}.inning-bar{padding:12px 16px 0;background:#0d160f;display:flex;align-items:center;gap:6px;flex-shrink:0}.inn-label{color:var(--yellow);font-weight:700;font-size:11px;letter-spacing:1px}.inn-btn{width:34px;height:34px;border-radius:7px;background:#1a1a1a;color:#666;font-weight:800;font-size:14px;border:1px solid #2a2a2a;transition:all .15s}.inn-btn.active{background:var(--green);color:#fff;border:2px solid var(--green-l)}.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}.section{padding:14px 16px}.section-label{color:var(--green-l);font-weight:700;font-size:10px;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}.section-label-y{color:var(--yellow);font-weight:700;font-size:11px;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}.player-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.player-btn{background:#111a12;border:1px solid #222;border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:8px;text-align:left;transition:all .15s;width:100%}.player-btn.assigned{border-color:rgba(26,92,42,.35)}.player-btn.selected{background:var(--green);border:2px solid var(--yellow)}.num-badge{background:var(--green);border-radius:5px;padding:2px 7px;min-width:32px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;font-family:monospace;flex-shrink:0}.num-badge.sel{background:#0d1a0f;border:1px solid var(--yellow);color:var(--yellow)}.player-fname{font-size:12px;font-weight:700;color:#ddd;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player-pos{font-size:10px;color:#444;font-weight:600}.player-btn.selected .player-fname{color:var(--yellow)}.player-btn.selected .player-pos{color:rgba(255,255,255,.6)}.player-btn.assigned .player-pos{color:var(--yellow)}.field-wrap{position:relative;width:100%;padding-bottom:86%;border-radius:12px;overflow:hidden}.field-wrap svg{position:absolute;inset:0;width:100%;height:100%}.pos-pin{position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px;z-index:10;transform:translate(-50%,-50%)}.pos-btn{width:32px;height:32px;border-radius:6px;font-weight:900;font-size:10px;transition:all .15s;border:2px dashed rgba(26,92,42,.55);background:rgba(0,0,0,.27);color:#aaa}.pos-btn.filled{background:var(--green);border:2px solid var(--yellow);color:var(--yellow);box-shadow:0 0 6px var(--green)}.pos-btn.targeting{border:2px solid var(--yellow);background:rgba(255,255,255,.13);box-shadow:0 0 10px rgba(232,232,0,.4)}.pos-label{background:rgba(0,0,0,.78);border-radius:4px;padding:1px 5px;font-size:8px;color:#888;white-space:nowrap;font-weight:700}.pos-label.filled{color:var(--yellow)}.prog-wrap{display:flex;align-items:center;gap:8px;margin:10px 0 6px}.prog-bar{flex:1;background:#1a1a1a;border-radius:4px;height:5px}.prog-fill{height:5px;background:var(--green);border-radius:4px;transition:width .3s;box-shadow:0 0 6px var(--green)}.prog-label{font-size:11px;font-weight:700;color:#555}.prog-label.done{color:var(--yellow)}.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}.action-btn{background:#111a12;border:1px solid rgba(26,92,42,.27);border-radius:8px;color:#777;font-weight:700;font-size:10px;padding:11px;letter-spacing:.5px}.action-btn:disabled{color:#333}.bat-item{display:flex;align-items:center;gap:10px;background:#111a12;border-radius:10px;padding:9px 12px;margin-bottom:6px;border:1px solid rgba(26,92,42,.2)}.bat-num{width:28px;height:28px;border-radius:50%;background:var(--green);color:var(--yellow);font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.bat-pos{font-size:10px;color:var(--green-l);font-weight:700}.bat-arrows{display:flex;flex-direction:column;gap:1px}.arr-btn{background:none;border:none;color:#666;font-size:11px;padding:0 4px;line-height:1}.arr-btn:disabled{color:#222}.remove-btn{background:#200000;border:none;border-radius:6px;color:#c53935;font-weight:700;padding:4px 8px;font-size:12px}.add-item{display:flex;width:100%;align-items:center;gap:10px;background:#0d160f;border-radius:10px;padding:9px 12px;margin-bottom:6px;border:1px solid rgba(26,92,42,.13);text-align:left}.add-plus{color:var(--green-l);font-weight:900;font-size:16px;line-height:1}.add-name{flex:1;color:#888;font-weight:600;font-size:13px}.empty-state{color:#333;text-align:center;padding:28px 0;font-size:13px;border:1px dashed rgba(26,92,42,.27);border-radius:10px;margin-bottom:12px}.pitch-list{background:#0d160f;border-radius:12px;overflow:hidden;border:1px solid rgba(26,92,42,.27);margin-bottom:18px}.pitch-row{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;border-bottom:1px solid rgba(26,92,42,.13);transition:background .15s}.pitch-row:last-child{border-bottom:none}.pitch-row.active{background:rgba(26,92,42,.13)}.pitch-inn-box{width:34px;height:34px;border-radius:8px;background:#1a1a1a;color:#555;font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}.pitch-row.active .pitch-inn-box{background:var(--green);color:var(--yellow)}.pitch-inn-label{font-size:10px;color:#444;font-weight:700;letter-spacing:1px}.pitch-name{font-size:13px;font-weight:700;color:#333;margin-top:1px}.pitch-name.set{color:#fff}.pitch-badge{background:var(--green);border-radius:6px;padding:3px 9px;font-size:13px;font-weight:900;color:var(--yellow)}.roster-item{background:#0d160f;border:1px solid rgba(26,92,42,.2);border-radius:10px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;gap:10px}.roster-num{width:36px;height:36px;border-radius:8px;background:var(--green);border:2px solid var(--green-l);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--yellow);flex-shrink:0}.roster-name{flex:1;font-weight:600;font-size:13px;cursor:pointer}.edit-btn{background:none;border:none;color:#333;font-size:14px;padding:4px}.add-player-form{background:#111a12;border:1px solid var(--green);border-radius:10px;padding:12px;margin-bottom:12px}.add-player-row{display:flex;gap:8px;margin-bottom:8px}.add-player-row input{background:#0d0d0d;border:1px solid var(--green);border-radius:7px;color:#fff;padding:9px 12px;font-size:13px;outline:none}.add-player-row input::placeholder{color:#444}.add-player-row input:first-child{flex:1}.add-player-row input:last-child{width:60px;color:var(--yellow);font-weight:700;text-align:center}.add-player-actions{display:flex;gap:8px}.btn-primary{background:var(--green);border:none;border-radius:7px;color:var(--yellow);font-weight:800;padding:9px;font-size:13px}.btn-cancel{background:#1a1a1a;border:none;border-radius:7px;color:#666;padding:9px 14px;font-size:13px}.inline-edit{display:flex;gap:6px;flex:1}.inline-edit input{background:transparent;border:none;color:#fff;font-weight:600;font-size:13px;outline:none;padding:2px 0}.inline-edit input:first-child{flex:1;border-bottom:1px solid var(--yellow)}.inline-edit input:last-child{width:48px;border-bottom:1px solid var(--green);color:var(--yellow);font-weight:700;text-align:center}.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px}.stat-card{background:#111a12;border-radius:8px;padding:10px 8px;text-align:center}.stat-val{color:var(--yellow);font-weight:900;font-size:16px}.stat-lbl{color:#444;font-size:8px;font-weight:700;letter-spacing:.5px;margin-top:2px}.lineup-card{background:#0d160f;border:1px solid rgba(26,92,42,.2);border-radius:12px;overflow:hidden;margin-bottom:18px}.lc-header{display:grid;grid-template-columns:32px 1fr 1fr 1fr 1fr 1fr 1fr;background:var(--green);padding:6px 10px;gap:4px}.lc-hcell{color:var(--yellow);font-weight:800;font-size:9px;text-align:center}.lc-hcell:first-child{text-align:left}.lc-row{display:grid;grid-template-columns:32px 1fr 1fr 1fr 1fr 1fr 1fr;padding:5px 10px;gap:4px;border-bottom:1px solid rgba(26,92,42,.07)}.lc-row.pitcher{background:#0f1f11;border-bottom:1px solid rgba(26,92,42,.13)}.lc-row.even{background:#0d160f}.lc-row.odd{background:#0a120c}.lc-row.bat-row{background:#111a12;border-top:1px solid rgba(26,92,42,.2);border-bottom:none}.lc-pos{font-size:9px;font-weight:800;color:var(--green-l);display:flex;align-items:center}.lc-pos.p{color:var(--yellow)}.lc-pos.bat{font-size:7px;color:#555;line-height:1.1}.lc-cell{text-align:center}.lc-num{font-size:9px;font-weight:900;color:var(--yellow)}.lc-name{font-size:7px;color:#aaa}.lc-empty{font-size:9px;color:#222}.lc-set{font-size:7px;color:var(--green-l);font-weight:700}.bat-preview-item{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid rgba(26,92,42,.07)}.bat-preview-item.even{background:#0d160f}.bat-preview-item.odd{background:#0a120c}.bp-spot{width:22px;height:22px;border-radius:50%;background:var(--green);color:var(--yellow);font-weight:900;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.bp-num{background:var(--green);border-radius:4px;padding:1px 6px;font-size:11px;font-weight:900;color:var(--yellow)}.bp-name{flex:1;font-size:12px;font-weight:600;color:#ddd}.bp-pos{font-size:10px;color:var(--green-l);font-weight:700}.export-btns{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}.exp-btn{border-radius:10px;font-weight:800;font-size:13px;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;border:none}.exp-btn.primary{background:var(--green);color:var(--yellow);border:1px solid rgba(232,232,0,.27)}.exp-btn.secondary{background:#111a12;color:#ccc;border:1px solid var(--green)}.exp-btn.tertiary{background:#111a12;color:#888;border:1px solid rgba(26,92,42,.27)}.footer{text-align:center;padding:12px;border-top:1px solid rgba(26,92,42,.13)}.footer-main{color:var(--green);font-size:11px;font-weight:700;letter-spacing:2px}.footer-sub{color:#333;font-size:10px;margin-top:4px;letter-spacing:1px}#toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:var(--yellow);font-weight:700;font-size:13px;padding:10px 22px;border-radius:50px;opacity:0;transition:all .3s;z-index:999;white-space:nowrap;pointer-events:none}#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.add-roster-btn{background:var(--green);border:1px solid rgba(232,232,0,.33);border-radius:8px;color:var(--yellow);font-weight:800;font-size:12px;padding:6px 14px}.roster-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.roster-item.inactive{opacity:.45;border-color:rgba(255,255,255,.06)}.roster-num.inactive{background:#2a2a2a;border-color:#333;color:#666}.bench-toggle{background:none;border:1px solid #333;border-radius:6px;color:#555;font-size:11px;font-weight:700;padding:4px 8px;transition:all .15s}.bench-toggle.active-player{border-color:var(--green);color:var(--green-l)}.bench-section-label{color:#444;font-size:9px;font-weight:800;letter-spacing:1px;padding:8px 0 6px;text-transform:uppercase;border-top:1px solid #1a1a1a;margin-top:4px}.gv-inning{background:#0a120c;border-radius:14px;margin-bottom:14px;overflow:hidden;border:1px solid rgba(26,92,42,.3)}.gv-inn-header{background:var(--green);padding:10px 14px;display:flex;align-items:center;gap:10px}.gv-inn-num{color:#0d1a0f;font-weight:900;font-size:20px;line-height:1}.gv-inn-label{color:rgba(0,30,0,.7);font-weight:700;font-size:10px;letter-spacing:2px}.gv-pitcher{background:#0f2e14;padding:8px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(26,92,42,.2)}.gv-pitcher-badge{background:var(--yellow);color:#0d1a0f;font-weight:900;font-size:10px;letter-spacing:1px;padding:2px 7px;border-radius:4px}.gv-pitcher-name{color:var(--yellow);font-weight:700;font-size:14px}.gv-pitcher-num{color:rgba(232,232,0,.6);font-size:12px;font-weight:700}.gv-pos-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.gv-pos-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(26,92,42,.08)}.gv-pos-item:nth-child(odd){border-right:1px solid rgba(26,92,42,.08)}.gv-pos-tag{background:rgba(26,92,42,.4);color:var(--green-l);font-weight:800;font-size:9px;letter-spacing:.5px;padding:2px 5px;border-radius:3px;min-width:24px;text-align:center;flex-shrink:0}.gv-pos-num{color:var(--yellow);font-weight:900;font-size:11px;flex-shrink:0}.gv-pos-name{color:#ddd;font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gv-empty{color:#333;font-style:italic;font-size:12px}.gv-bat-section{padding:10px 14px;border-top:1px solid rgba(26,92,42,.15)}.gv-bat-title{color:var(--green-l);font-size:9px;font-weight:800;letter-spacing:1px;margin-bottom:8px}.gv-bat-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}.gv-bat-spot{width:20px;height:20px;border-radius:50%;background:rgba(26,92,42,.5);color:var(--yellow);font-weight:900;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.gv-bat-num{color:var(--yellow);font-weight:900;font-size:11px;flex-shrink:0;min-width:30px}.gv-bat-name{color:#ddd;font-size:12px;font-weight:600}.gv-no-data{text-align:center;padding:40px 20px;color:#2a3a2a}.gv-no-icon{font-size:36px;margin-bottom:12px}.gv-no-text{font-size:14px;color:#3a5a3a;font-weight:600}.gv-no-sub{font-size:11px;color:#2a3a2a;margin-top:6px}</style>
+</head>
+<body>
+<div id="app">
+<div class="header">
+<img src="data:image/webp;base64,UklGRoYDAABXRUJQVlA4IHoDAACQEQCdASowADAAPp1Emkklo6IhLjv4ALATiWcA0cLzPgl8Re0GUV/SeRfUuZKchQ+Vf6f8qvyA9GD0A7WbjPu8POF/u/S4/1/7x50Poz/v/4b4BP5H/Xv+B2KvRVV5/6PWjvquhDxf/4UJIVk4KDJUyWo34U6FFlqoG/tEQtWFG2y1rJMsObx6gpWRIdXcw4kz1H+UuAD+/v93dgu6PI5IQYkI2cHkMzDGRMPMdPoe/94M51+UlON5EHdj/NF/Kbf3V5Hk4f9lpKfu5IVnv4/qLJ/FjtSNyavl4cbrbgBI1ceEFZlj2/8xMCfCpICW9H9/ChiIf9rZXpZ4S11OYRA3rIZU89b9ByJXJvOpbFhAxUvrT+8FH4qR2yZqzd3kFTSLX83fbOjjmNGYwwHSh7YcgmoR7AL7yKjWOCb3khtI4K8IJjWkXL91e9Y+3p4PMqW9K24Ws00gjocVx0bpB2lHTxbQsK19nmvfD8jfZU0/usoIXP/oIzxb+w69yyAawUeOrbEMAc/7bCbpOVT8d18CeD0e6GlMkKM9F5Z0w3rD9GealqtwI8jByEht/hC0eMKJby1L0yHBWzX6AMGqdGqCxmLie2qaN2ba3g0QADmtL/n95/q4BDHMBeOZ4Rb4waboArZ8eA91miKiv7hNy6lbnDDCwZ7jBeavmo4KujPjbnE5fNAc+k3NvVxsAOhoaBVfzMKwQOHI+84pLs2weZRntdDyxBwkUEr8kOBmjO0o/uSpzg4yDZq2/M1doHkaIjksrSZQz3e9Q9NihcOQf/5FXrHWK4uTT4lizRF9BHlDUx+CrIH7TP8jfWyxsno7vGW66bChFMAOL6B6F+vEWrhTvzt3t8iH9zPL4AlhC2+c7Vq3X+rIwDOcjBj9cKSFFN6QcPrpJCLtrXDQCjhLo7JPD9vq1KF+swx8mepkdD8lJfPUOLQOmUYxuQ+yjQsu9aZyivQynrr1x1Oiq4WL8Uc+UNVRJLAY6pXZgqcQFmFWW/KCulqXKVsUUCdEZwGbumtrQsceJGmkv5yCXEePp9oq+Ge6wZ7Pf0zzo3eaPLdk360iVaA5rOZ+J7fCZUX6iYnDgfzNuTMwVqh9S0+l4uD/fftWdOa9NrrkR9xwxxI99Xd2JXbmB3fxoo4lvu4D39ocoO1EgATsv+3rjgTzXjIX4PAZ+waJRAjgAA==" alt="DY All-Stars">
+<div>
+<div class="header-title">9U ALL-STARS</div>
+<div class="header-sub">DENNIS / YARMOUTH &middot; LINEUP MANAGER</div>
+</div>
+</div>
+<div class="tabs">
+<button class="tab" onclick="showTab('game')">🏟️ GAME</button>
+<button class="tab active" onclick="showTab('field')">⚾ FIELD</button>
+<button class="tab" onclick="showTab('batting')">🏏 BAT</button>
+<button class="tab" onclick="showTab('pitches')">⚡ PITCH</button>
+<button class="tab" onclick="showTab('roster')">👥 ROSTER</button>
+<button class="tab" onclick="showTab('export')">📤 EXPORT</button>
+</div>
+<div class="inning-bar" id="inning-bar">
+<span class="inn-label">INN</span>
+<button class="inn-btn active" onclick="setInning(1)" id="inn1">1</button>
+<button class="inn-btn" onclick="setInning(2)" id="inn2">2</button>
+<button class="inn-btn" onclick="setInning(3)" id="inn3">3</button>
+<button class="inn-btn" onclick="setInning(4)" id="inn4">4</button>
+<button class="inn-btn" onclick="setInning(5)" id="inn5">5</button>
+<button class="inn-btn" onclick="setInning(6)" id="inn6">6</button>
+</div>
+<div class="content" id="content"></div>
+</div>
+<div id="toast"></div><script>
+// ── State ──
+const INNINGS = [1,2,3,4,5,6];
+const POS_LABELS = {P:"Pitcher",C:"Catcher","1B":"1st Base","2B":"2nd Base","3B":"3rd Base",SS:"Shortstop",LF:"Left Field",CF:"Center Field",RF:"Right Field"};
+const FIELD_POS = [{id:"CF",x:50,y:12},{id:"LF",x:18,y:22},{id:"RF",x:82,y:22},{id:"SS",x:35,y:42},{id:"2B",x:60,y:38},{id:"3B",x:22,y:56},{id:"1B",x:78,y:56},{id:"P",x:50,y:58},{id:"C",x:50,y:78}];
+const initialPlayers = [
+{name:"Joey Jenkins",number:11},
+{name:"Bodhi Gardner",number:1},
+{name:"Landon Sullivan",number:3},
+{name:"Cody Brunetti",number:99},
+{name:"Charles Hoppen",number:5},
+{name:"Wiley Shea",number:8},
+{name:"Henry Farrow",number:34},
+{name:"Finn Hendrickx",number:17},
+{name:"Rory Hendrickx",number:7},
+{name:"Gregory Buckley",number:12},
+{name:"Luke Bridges",number:44},
+];
+let state = {
+players: [
+{name:"Joey Jenkins",number:11},
+{name:"Bodhi Gardner",number:1},
+{name:"Landon Sullivan",number:3},
+{name:"Cody Brunetti",number:99},
+{name:"Charles Hoppen",number:5},
+{name:"Wiley Shea",number:8},
+{name:"Henry Farrow",number:34},
+{name:"Finn Hendrickx",number:17},
+{name:"Rory Hendrickx",number:7},
+{name:"Gregory Buckley",number:12},
+{name:"Luke Bridges",number:44},
+],
+innings:{1:{},2:{},3:{},4:{},5:{},6:{}},
+batting:[],
+pitchers:{1:null,2:null,3:null,4:null,5:null,6:null},
+activeInning:1,
+activeTab:"field",
+selectedPlayer:null,
+editingPlayerIdx:null,
+addingPlayer:false,
+inactive:new Set(),
+};
+function save(){
+  try{
+    if(typeof localStorage!=='undefined')
+      localStorage.setItem("dy9u",JSON.stringify(state));
+  }catch(e){}
+}
+function load(){
+  try{
+    if(typeof localStorage==='undefined')return;
+    const d=localStorage.getItem("dy9u");
+    if(!d)return;
+    const s=JSON.parse(d);
+    // Validate it's an object before merging
+    if(typeof s!=='object'||s===null)return;
+    Object.assign(state,s);
+    // Migrate old per-inning batting {1:[],2:[],...} to single array
+    if(state.batting&&!Array.isArray(state.batting)){
+      state.batting=state.batting[1]||state.batting[Object.keys(state.batting)[0]]||[];
     }
+    // Ensure all required keys exist
+    if(!state.innings)state.innings={1:{},2:{},3:{},4:{},5:{},6:{}};
+    if(!state.pitchers)state.pitchers={1:null,2:null,3:null,4:null,5:null,6:null};
+    if(!Array.isArray(state.batting))state.batting=[];
+    if(!Array.isArray(state.players)||!state.players.length)state.players=initialPlayers.map(p=>({...p}));
+  }catch(e){
+    try{localStorage.removeItem("dy9u");}catch(e2){}
+  }
+}
+load();
+if(!(state.inactive instanceof Set))state.inactive=new Set();
+function getPlayerByName(n){return state.players.find(p=>p.name===n);}
+function getPlayerPosition(name){
+const pos=state.innings[state.activeInning]||{};
+return Object.entries(pos).find(([k,v])=>v===name)?.[0]||null;
+}
+// ── Tab / Inning ──
+function showTab(t){
+state.activeTab=t;
+state.selectedPlayer=null;
+document.querySelectorAll('.tab').forEach((b,i)=>{
+b.classList.toggle('active',['game','field','batting','pitches','roster','export'][i]===t);
+});
+const bar=document.getElementById('inning-bar');
+bar.style.display=(t==='field'||t==='pitches')?'flex':'none';
+render();
+save();
+}
+function setInning(i){
+state.activeInning=i;
+state.selectedPlayer=null;
+INNINGS.forEach(n=>document.getElementById('inn'+n).classList.toggle('active',n===i));
+render();
+save();
+}
+// ── Field ──
+function selectPlayer(name){
+state.selectedPlayer=state.selectedPlayer===name?null:name;
+render();
+}
+function assignPosition(posId){
+if(!state.selectedPlayer)return;
+const cur={...state.innings[state.activeInning]};
+Object.keys(cur).forEach(k=>{if(cur[k]===state.selectedPlayer)delete cur[k];});
+cur[posId]=state.selectedPlayer;
+state.innings[state.activeInning]=cur;
+state.selectedPlayer=null;
+render();save();
+}
+function clearPosition(posId){
+const cur={...state.innings[state.activeInning]};
+delete cur[posId];
+state.innings[state.activeInning]=cur;
+render();save();
+}
+function clearInning(){state.innings[state.activeInning]={};render();save();}
+function copyPrevious(){
+if(state.activeInning<=1)return;
+state.innings[state.activeInning]={...state.innings[state.activeInning-1]};
+render();save();
+}
+// ── Batting ──
+function addToBatting(name){
+if(state.batting.includes(name))return;
+state.batting.push(name);
+render();save();
+}
+function removeFromBatting(name){
+state.batting=state.batting.filter(n=>n!==name);
+render();save();
+}
+function moveBatter(idx,dir){
+const arr=state.batting;
+const ni=idx+dir;
+if(ni<0||ni>=arr.length)return;
+[arr[idx],arr[ni]]=[arr[ni],arr[idx]];
+render();save();
+}
+// ── Pitchers ──
+function togglePitcher(name){
+state.pitchers[state.activeInning]=state.pitchers[state.activeInning]===name?null:name;
+render();save();
+}
+// ── Roster ──
+function startEdit(idx){state.editingPlayerIdx=idx;render();}
+function saveEdit(){
+const nameEl=document.getElementById('edit-name');
+const numEl=document.getElementById('edit-num');
+if(!nameEl||!numEl)return;
+const oldName=state.players[state.editingPlayerIdx].name;
+const newName=nameEl.value.trim()||oldName;
+const newNum=parseInt(numEl.value)||state.players[state.editingPlayerIdx].number;
+state.players[state.editingPlayerIdx]={name:newName,number:newNum};
+// Update all references
+INNINGS.forEach(i=>{
+Object.keys(state.innings[i]).forEach(pos=>{
+if(state.innings[i][pos]===oldName)state.innings[i][pos]=newName;
+});
+state.batting=state.batting.map(n=>n===oldName?newName:n);
+if(state.pitchers[i]===oldName)state.pitchers[i]=newName;
+});
+state.editingPlayerIdx=null;
+render();save();
+}
+function cancelEdit(){state.editingPlayerIdx=null;render();}
+function toggleInactive(idx){
+const name = state.players[idx].name;
+if(state.inactive.has(name)){
+state.inactive.delete(name);
+} else {
+state.inactive.add(name);
+// Remove from all innings, batting, pitchers when benched
+INNINGS.forEach(i=>{
+Object.keys(state.innings[i]).forEach(pos=>{if(state.innings[i][pos]===name)delete state.innings[i][pos];});
+if(state.pitchers[i]===name)state.pitchers[i]=null;
+});
+state.batting=state.batting.filter(n=>n!==name);
+}
+render();save();
+}
+function removePlayer(idx){
+const name=state.players[idx].name;
+state.players.splice(idx,1);
+INNINGS.forEach(i=>{
+Object.keys(state.innings[i]).forEach(pos=>{if(state.innings[i][pos]===name)delete state.innings[i][pos];});
+state.batting=state.batting.filter(n=>n!==name);
+if(state.pitchers[i]===name)state.pitchers[i]=null;
+});
+render();save();
+}
+function addPlayer(){
+const nameEl=document.getElementById('new-name');
+const numEl=document.getElementById('new-num');
+const name=nameEl.value.trim();
+if(!name)return;
+state.players.push({name,number:parseInt(numEl.value)||0});
+state.addingPlayer=false;
+render();save();
+}
+function cancelAdd(){state.addingPlayer=false;render();}
+// ── Export ──
+function exportText(){
+const lines=[];
+lines.push("DY 9U ALL-STARS — DENNIS/YARMOUTH");
+lines.push("===================================");
+lines.push("");
+const pb=state.batting||[];
+if(pb.length){
+lines.push("BATTING ORDER");
+lines.push("-------------");
+pb.forEach((n,i)=>{
+const p=getPlayerByName(n);
+lines.push(`  ${i+1}. #${p?.number??'?'} ${n}`);
+});
+lines.push("");
+}
+lines.push("FIELDING BY INNING");
+lines.push("------------------");
+INNINGS.forEach(inn=>{
+const pos=state.innings[inn]||{};
+const pitcher=state.pitchers[inn];
+if(!Object.keys(pos).length&&!pitcher)return;
+lines.push(`Inning ${inn}:`);
+if(pitcher){const p=getPlayerByName(pitcher);lines.push(`  P  (Pitcher)     — #${p?.number??'?'} ${pitcher}`);}
+["C","1B","2B","3B","SS","LF","CF","RF"].forEach(pid=>{
+if(pos[pid]){const p=getPlayerByName(pos[pid]);lines.push(`  ${pid.padEnd(3)}(${POS_LABELS[pid].padEnd(12)}) — #${p?.number??'?'} ${pos[pid]}`);}
+});
+lines.push("");
+});
+if(INNINGS.some(i=>state.pitchers[i])){
+lines.push("PITCHING SUMMARY");
+lines.push("----------------");
+INNINGS.forEach(inn=>{if(state.pitchers[inn]){const p=getPlayerByName(state.pitchers[inn]);lines.push(`  Inning ${inn}: #${p?.number??'?'} ${state.pitchers[inn]}`);}});
+lines.push("");
+}
+lines.push("ONE TEAM. ONE GOAL. ALL STARS. ALL HEART.");
+return lines.join("\n");
+}
+function exportCSV(){
+const rows=[["Inning","Position","#","Player","Pitching"]];
+INNINGS.forEach(inn=>{
+const pos=state.innings[inn]||{};
+if(state.pitchers[inn]){const p=getPlayerByName(state.pitchers[inn]);rows.push([inn,"P (Pitcher)",p?.number??"",state.pitchers[inn],"YES"]);}
+Object.entries(pos).forEach(([pid,name])=>{const p=getPlayerByName(name);rows.push([inn,`${pid} - ${POS_LABELS[pid]}`,p?.number??"",name,state.pitchers[inn]===name?"YES":""]);});
+});
+rows.push([]);rows.push(["BATTING ORDER (Inning 1)"]);rows.push(["Spot","#","Player"]);
+(state.batting||[]).forEach((name,i)=>{const p=getPlayerByName(name);rows.push([i+1,p?.number??"",name]);});
+return rows.map(r=>r.join(",")).join("\n");
+}
+function dlText(){
+const content = exportText();
+// On mobile Safari, open in a new page the user can share/save
+const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = 'DY-AllStars-Lineup.txt';
+a.style.display = 'none';
+document.body.appendChild(a);
+a.click();
+setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1000);
+// Fallback: show in overlay for manual copy
+setTimeout(() => {
+if(!document.hasFocus()) return; // download worked
+showExportOverlay(content, 'DY-AllStars-Lineup.txt');
+}, 800);
+}
+function dlCSV(){
+const content = exportCSV();
+const blob = new Blob([content], {type:'text/csv;charset=utf-8'});
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = 'DY-AllStars-Lineup.csv';
+a.style.display = 'none';
+document.body.appendChild(a);
+a.click();
+setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1000);
+setTimeout(() => {
+if(!document.hasFocus()) return;
+showExportOverlay(content, 'DY-AllStars-Lineup.csv');
+}, 800);
+}
+function copyClipboard(){
+const txt = exportText();
+if(navigator.clipboard && navigator.clipboard.writeText){
+navigator.clipboard.writeText(txt)
+.then(() => showToast('✓ Copied to clipboard!'))
+.catch(() => showExportOverlay(txt, 'lineup.txt'));
+} else {
+showExportOverlay(txt, 'lineup.txt');
+}
+}
+function showExportOverlay(content, filename){
+// Remove any existing overlay
+const existing = document.getElementById('export-overlay');
+if(existing) existing.remove();
+const overlay = document.createElement('div');
+overlay.id = 'export-overlay';
+overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;flex-direction:column;padding:16px;box-sizing:border-box';
+overlay.innerHTML = `
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+<div style="color:#e8e800;font-weight:800;font-size:14px;letter-spacing:1px">📋 ${filename}</div>
+<button onclick="document.getElementById('export-overlay').remove()" style="background:#1a5c2a;border:none;border-radius:50%;width:32px;height:32px;color:#e8e800;font-size:18px;cursor:pointer;font-weight:700">×</button>
+</div>
+<div style="color:#666;font-size:11px;margin-bottom:10px">Select all → Copy → paste into Notes or Email</div>
+<textarea id="export-ta" readonly style="flex:1;background:#0d1a0f;border:1px solid #1a5c2a;border-radius:8px;color:#ccc;font-family:monospace;font-size:12px;padding:12px;resize:none;outline:none;line-height:1.5">${content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
+<button onclick="selectExportText()" style="margin-top:10px;background:#1a5c2a;border:1px solid #e8e800;border-radius:10px;color:#e8e800;font-weight:800;font-size:14px;padding:14px;cursor:pointer">SELECT ALL TEXT</button>
+`;
+document.body.appendChild(overlay);
+setTimeout(() => {
+const ta = document.getElementById('export-ta');
+if(ta){ ta.value = content; selectExportText(); }
+}, 100);
+}
+function selectExportText(){
+const ta = document.getElementById('export-ta');
+if(!ta) return;
+ta.focus();
+ta.select();
+ta.setSelectionRange(0, ta.value.length);
+// Try clipboard copy
+if(navigator.clipboard && navigator.clipboard.writeText){
+navigator.clipboard.writeText(ta.value).then(() => showToast('✓ Copied!')).catch(()=>{});
+} else {
+try{ document.execCommand('copy'); showToast('✓ Copied!'); } catch(e){}
+}
+}
+function exportPDF(){
+// Build print content inside a full-screen overlay, then trigger window.print()
+// This works on Safari iOS - user taps Print in share sheet, saves as PDF
+const POSLIST = ["C","1B","2B","3B","SS","LF","CF","RF"];
+const bat = state.batting||[];
 
+// Build inning cards HTML
+let inningCards = "";
+[1,2,3,4,5,6].forEach(inn=>{
+const pos = state.innings[inn]||{};
+const pitcher = state.pitchers[inn];
+const hasData = Object.keys(pos).length>0 || pitcher;
+if(!hasData) return;
+inningCards += `<div style="margin-bottom:16px;break-inside:avoid">
+<div style="background:#1a5c2a;color:#e8e800;font-weight:900;font-size:13px;letter-spacing:2px;padding:6px 10px;border-radius:6px 6px 0 0">INNING ${inn}</div>
+<table style="width:100%;border-collapse:collapse;font-size:12px">`;
+if(pitcher){const p=getPlayerByName(pitcher);inningCards+=`<tr style="background:#0f2e14"><td style="padding:5px 8px;color:#e8e800;font-weight:800;width:36px">P</td><td style="padding:5px 8px;color:#aaa;font-size:10px">Pitcher</td><td style="padding:5px 8px;color:#e8e800;font-weight:700">#${p?.number??''} ${pitcher}</td></tr>`;}
+POSLIST.forEach((pid,ri)=>{
+if(!pos[pid])return;
+const p=getPlayerByName(pos[pid]);
+inningCards+=`<tr style="background:${ri%2===0?'#0d1a10':'#0a1209'}"><td style="padding:5px 8px;color:#2a7a3a;font-weight:800">${pid}</td><td style="padding:5px 8px;color:#aaa;font-size:10px">${POS_LABELS[pid]}</td><td style="padding:5px 8px;color:#fff;font-weight:600">#${p?.number??''} ${pos[pid]}</td></tr>`;
+});
+inningCards += `</table></div>`;
+});
 
-# ── Script generation (Claude) ─────────────────────────────────────────────────
-_SYSTEM = """\
-You write short, punchy morning podcast scripts for "Sox Daily Recap."
+let batHTML = "";
+if(bat.length){
+batHTML = `<div style="margin-top:8px;break-inside:avoid">
+<div style="background:#1a3a0a;color:#e8e800;font-weight:900;font-size:13px;letter-spacing:2px;padding:6px 10px;border-radius:6px 6px 0 0">BATTING ORDER</div>
+<table style="width:100%;border-collapse:collapse;font-size:12px">
+${bat.map((n,i)=>{const p=getPlayerByName(n);return `<tr style="background:${i%2===0?'#0d1a10':'#0a1209'}"><td style="padding:5px 8px;color:#e8e800;font-weight:900;width:28px">${i+1}</td><td style="padding:5px 8px;color:#e8e800;font-weight:700;width:40px">#${p?.number??''}</td><td style="padding:5px 8px;color:#fff">${n}</td></tr>`;}).join('')}
+</table></div>`;
+}
 
-Two hosts:
-  HENRY — the son, early 20s, high energy. Uses phrases like "absolute missile",
-           "he ate", "that slider was FILTHY", "cooked", "no-doubt homer".
-  DAD   — his father, mid-50s, old-school Red Sox lifer. Dry wit, mentions 2004
-           constantly, grumbles about launch angles and spin rates but secretly
-           respects the numbers.
+const printContent = `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:16px;background:#0d1a0f;color:#ddd">
+<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #1a5c2a">
+<div style="color:#e8e800;font-size:22px;font-weight:900;letter-spacing:2px">DY 9U ALL-STARS</div>
+<div style="color:#2a7a3a;font-size:11px;letter-spacing:1px;margin-top:2px">DENNIS / YARMOUTH &bull; LINEUP CARD</div>
+</div>
+${inningCards}
+${batHTML}
+<div style="margin-top:20px;text-align:center;color:#1a5c2a;font-size:10px;letter-spacing:2px;padding-top:10px;border-top:1px solid #1a3a1a">ONE TEAM. ONE GOAL. &bull; ALL STARS. ALL HEART.</div>
+</div>`;
 
-Rules:
-- Output ONLY the dialogue. No stage directions, no markdown, no narration.
-- Format every line exactly as:
-    HENRY: [line]
-    DAD: [line]
-- Write 10–14 exchanges total.
-- Keep lines punchy and conversational — this is audio, not print.
-- End with a quick sign-off from both hosts.
-"""
+// Create a hidden print-only div, swap page content, print, restore
+const printDiv = document.createElement('div');
+printDiv.id = 'print-frame';
+printDiv.innerHTML = printContent;
 
+// Add print styles to head
+const style = document.createElement('style');
+style.id = 'print-style';
+style.textContent = `
+@media print {
+  body > *:not(#print-frame) { display: none !important; }
+  #print-frame { display: block !important; }
+  body { background: #0d1a0f !important; margin: 0; }
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+@media screen { #print-frame { display: none; } }
+`;
+document.head.appendChild(style);
+document.body.appendChild(printDiv);
 
-def generate_script(game: Optional[dict], date_str: str) -> str:
-    client = Anthropic(api_key=ANTHROPIC_API_KEY)
+window.print();
 
-    if game is None:
-        user_msg = (
-            f"The Red Sox had an off day on {date_str}. "
-            "Write an episode where Henry and Dad talk about the current standings, "
-            "an upcoming series, and argue about one roster or lineup decision."
-        )
-    elif game.get("state") != "Final":
-        user_msg = (
-            f"The Red Sox game on {date_str} has status: '{game['state']}'. "
-            "Write a short hold episode discussing the situation and recent Sox news."
-        )
-    else:
-        sv = game["save_pitcher"] or "none"
-        user_msg = (
-            f"Write today's episode based on last night's game.\n\n"
-            f"  Result:           Red Sox {game['result']}\n"
-            f"  Opponent:         {game['opponent']}\n"
-            f"  Final score:      Red Sox {game['sox_score']}, "
-            f"{game['opponent']} {game['opp_score']}\n"
-            f"  Sox played:       {game['home_away']}\n"
-            f"  Winning pitcher:  {game['winning_pitcher']}\n"
-            f"  Losing pitcher:   {game['losing_pitcher']}\n"
-            f"  Save:             {sv}\n\n"
-            "React naturally. Reference specific details. Have them disagree about something."
-        )
+// Clean up after print dialog closes
+setTimeout(()=>{
+const s=document.getElementById('print-style');
+const d=document.getElementById('print-frame');
+if(s)s.remove();
+if(d)d.remove();
+},1000);
+}
+function showToast(msg){
+const t=document.getElementById('toast');
+t.textContent=msg;t.classList.add('show');
+setTimeout(()=>t.classList.remove('show'),2200);
+}
+// ── Render ──
+function nbadge(number,sel=false){
+return `<div class="num-badge${sel?' sel':''}">#${number}</div>`;
+}
+function renderField(){
+const pos=state.innings[state.activeInning]||{};
+const filled=Object.keys(pos).length;
+let html=`<div class="section">
+<div class="section-label">① Tap a player</div>
+<div class="player-grid">`;
+state.players.filter(p=>!state.inactive.has(p.name)).forEach(({name,number})=>{
+const p=getPlayerPosition(name);
+const sel=state.selectedPlayer===name;
+html+=`<button class="player-btn${p?' assigned':''}${sel?' selected':''}" onclick="selectPlayer('${name.replace(/'/g,"\'")}')">
+${nbadge(number,sel)}
+<div style="flex:1;min-width:0">
+<div class="player-fname">${name.split(' ')[0]}</div>
+<div class="player-pos">${p||'unassigned'}</div>
+</div>
+</button>`;
+});
+html+=`</div></div>
+<div class="section" style="padding-top:6px">
+<div class="section-label">② Tap a position${state.selectedPlayer?` — placing <b style="color:#fff;font-weight:400">${state.selectedPlayer.split(' ')[0]}</b>`:''}
+</div>
+<div class="field-wrap">
+<svg viewBox="0 0 100 86">
+<rect width="100" height="86" fill="#0e200f"/>
+<path d="M5,86 Q50,4 95,86 Z" fill="#1a4a1a"/>
+<path d="M5,86 Q50,10 95,86 Z" fill="#1e521e" opacity=".5"/>
+${[0,1,2,3,4,5].map(i=>`<path d="M${5+i*15},86 Q50,${10+i*4} ${95-i*15},86" fill="none" stroke="#fff" stroke-width=".15" opacity=".08"/>`).join('')}
+<path d="M32,86 L50,52 L68,86 Z" fill="#7a5510" opacity=".6"/>
+<ellipse cx="50" cy="56" rx="3" ry="2" fill="#8B6914" opacity=".8"/>
+<rect x="48.5" y="44" width="3" height="3" rx=".3" fill="white" transform="rotate(45 50 45.5)"/>
+<rect x="62" y="51" width="3" height="3" rx=".3" fill="white" transform="rotate(45 63.5 52.5)"/>
+<rect x="35" y="51" width="3" height="3" rx=".3" fill="white" transform="rotate(45 36.5 52.5)"/>
+<rect x="48.5" y="70" width="3" height="3" rx=".3" fill="white" transform="rotate(45 50 71.5)"/>
+<line x1="50" y1="71" x2="5" y2="86" stroke="white" stroke-width=".4"/>
+<line x1="50" y1="71" x2="95" y2="86" stroke="white" stroke-width=".4"/>
+<line x1="50" y1="45.5" x2="63.5" y2="52.5" stroke="#8B6914" stroke-width=".5" opacity=".6"/>
+<line x1="63.5" y1="52.5" x2="50" y2="71" stroke="#8B6914" stroke-width=".5" opacity=".6"/>
+<line x1="50" y1="71" x2="36.5" y2="52.5" stroke="#8B6914" stroke-width=".5" opacity=".6"/>
+<line x1="36.5" y1="52.5" x2="50" y2="45.5" stroke="#8B6914" stroke-width=".5" opacity=".6"/>
+</svg>`;
+FIELD_POS.forEach(({id,x,y})=>{
+const assigned=pos[id];
+const player=assigned?getPlayerByName(assigned):null;
+const targeting=!!state.selectedPlayer;
+const onclick=assigned&&!state.selectedPlayer?`clearPosition('${id}')`:state.selectedPlayer?`assignPosition('${id}')`:null;
+html+=`<div class="pos-pin" style="left:${x}%;top:${y}%">
+<button class="pos-btn${assigned?' filled':''}${targeting?' targeting':''}" ${onclick?`onclick="${onclick}"`:''}>${assigned?`#${player?.number??'?'}`:id}</button>
+<div class="pos-label${assigned?' filled':''}">${assigned?assigned.split(' ')[0].toUpperCase():id}</div>
+</div>`;
+});
+html+=`</div>
+<div class="prog-wrap">
+<div class="prog-bar"><div class="prog-fill" style="width:${(filled/9)*100}%"></div></div>
+<span class="prog-label${filled===9?' done':''}">${filled}/9</span>
+</div>
+<div class="action-grid">
+<button class="action-btn" onclick="clearInning()">↺ CLEAR INNING</button>
+<button class="action-btn" onclick="copyPrevious()" ${state.activeInning<=1?'disabled':''}>⎘ COPY PREV INNING</button>
+</div>
+</div>`;
+return html;
+}
+function renderBatting(){
+const order=state.batting||[];
+let html=`<div class="section">
+<div class="section-label-y">Batting Order</div>
+<div style="color:#444;font-size:11px;margin-bottom:12px">Same order used for all innings</div>`;
+if(!order.length){
+html+=`<div class="empty-state">Tap players below to set the order</div>`;
+} else {
+order.forEach((name,i)=>{
+const p=getPlayerByName(name);
+const fieldPos=getPlayerPosition(name);
+html+=`<div class="bat-item">
+<div class="bat-num">${i+1}</div>
+${nbadge(p?.number??'?')}
+<span style="flex:1;font-weight:600;font-size:13px">${name}</span>
+<span class="bat-pos">${fieldPos||'—'}</span>
+<div class="bat-arrows">
+<button class="arr-btn" onclick="moveBatter(${i},-1)" ${i===0?'disabled':''}>▲</button>
+<button class="arr-btn" onclick="moveBatter(${i},1)" ${i===order.length-1?'disabled':''}>▼</button>
+</div>
+<button class="remove-btn" onclick="removeFromBatting('${name.replace(/'/g,"\'")}')">✕</button>
+</div>`;
+});
+}
+const unset=state.players.filter(p=>!order.includes(p.name)&&!state.inactive.has(p.name));
+if(unset.length){
+html+=`<div class="section-label" style="margin-top:12px">Add to order</div>`;
+unset.forEach(({name,number})=>{
+html+=`<button class="add-item" onclick="addToBatting('${name.replace(/'/g,"\'")}')">
+<span class="add-plus">+</span>
+${nbadge(number)}
+<span class="add-name">${name}</span>
+</button>`;
+});
+}
+html+=`</div>`;
+return html;
+}
+function renderPitches(){
+let html=`<div class="section">
+<div class="section-label-y">Pitcher by Inning</div>
+<div style="color:#444;font-size:11px;margin-bottom:14px">Tap an inning to select it, then assign a pitcher</div>
+<div class="pitch-list">`;
+INNINGS.forEach((inn,i)=>{
+const pitcher=state.pitchers[inn];
+const player=pitcher?getPlayerByName(pitcher):null;
+const isActive=state.activeInning===inn;
+html+=`<div class="pitch-row${isActive?' active':''}" onclick="setInning(${inn})">
+<div class="pitch-inn-box">${inn}</div>
+<div style="flex:1">
+<div class="pitch-inn-label">INNING ${inn}</div>
+<div class="pitch-name${pitcher?' set':''}"> ${pitcher||'— unassigned —'}</div>
+</div>
+${player?`<div class="pitch-badge">#${player.number}</div>`:''}
+${pitcher?`<button class="remove-btn" onclick="event.stopPropagation();state.pitchers[${inn}]=null;render();save();">✕</button>`:''}
+</div>`;
+});
+html+=`</div>
+<div class="section-label">Assign Pitcher — Inning ${state.activeInning}</div>
+<div class="player-grid">`;
+state.players.filter(p=>!state.inactive.has(p.name)).forEach(({name,number})=>{
+const isAssigned=state.pitchers[state.activeInning]===name;
+const innings=INNINGS.filter(i=>state.pitchers[i]===name);
+html+=`<button class="player-btn${isAssigned?' selected':''}" onclick="togglePitcher('${name.replace(/'/g,"\'")}')">
+${nbadge(number,isAssigned)}
+<div>
+<div class="player-fname">${name.split(' ')[0]}</div>
+${innings.length?`<div style="font-size:9px;color:${isAssigned?'rgba(255,255,255,.6)':'var(--green-l)'};font-weight:600">inn ${innings.join(',')}</div>`:''}
+</div>
+</button>`;
+});
+html+=`</div></div>`;
+return html;
+}
+function renderRoster(){
+const activePlayers = state.players.filter(p=>!state.inactive.has(p.name));
+const benchedPlayers = state.players.filter(p=>state.inactive.has(p.name));
+let html=`<div class="section">
+<div class="roster-header">
+<div class="section-label-y" style="margin:0">Roster &middot; ${activePlayers.length} active${benchedPlayers.length?' &middot; '+benchedPlayers.length+' out':''}</div>
+<button class="add-roster-btn" onclick="state.addingPlayer=true;render()">+ ADD</button>
+</div>`;
+if(state.addingPlayer){
+html+=`<div class="add-player-form">
+<div class="add-player-row">
+<input id="new-name" placeholder="Player name" onkeydown="if(event.key==='Enter')addPlayer();if(event.key==='Escape')cancelAdd();" autofocus>
+<input id="new-num" placeholder="#" type="number" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+</div>
+<div class="add-player-actions">
+<button class="btn-primary" style="flex:1" onclick="addPlayer()">ADD PLAYER</button>
+<button class="btn-cancel" onclick="cancelAdd()">✕</button>
+</div>
+</div>`;
+}
+// Active players
+state.players.forEach(({name,number},idx)=>{
+const isInactive=state.inactive.has(name);
+const editing=state.editingPlayerIdx===idx;
+html+=`<div class="roster-item${isInactive?' inactive':''}">
+<div class="roster-num${isInactive?' inactive':''}">#${number}</div>
+${editing?`<div class="inline-edit">
+<input id="edit-name" value="${name}" onkeydown="if(event.key==='Enter')saveEdit();if(event.key==='Escape')cancelEdit();" autofocus>
+<input id="edit-num" value="${number}" type="number" style="width:48px">
+</div>`:`<span class="roster-name" onclick="startEdit(${idx})" style="${isInactive?'color:#555;text-decoration:line-through':''}">${name}</span>`}
+${editing
+? `<button class="btn-primary" style="padding:6px 12px;font-size:12px" onclick="saveEdit()">✓</button>`
+: `<button class="edit-btn" onclick="startEdit(${idx})">✎</button>`}
+<button
+onclick="toggleInactive(${idx})"
+title="${isInactive?'Mark available':'Mark absent'}"
+style="background:${isInactive?'rgba(26,92,42,.25)':'rgba(180,30,30,.15)'};border:1px solid ${isInactive?'var(--green)':'#c53935'};border-radius:6px;color:${isInactive?'var(--green-l)':'#c53935'};font-size:11px;font-weight:800;padding:5px 9px;min-width:52px">
+${isInactive?'✓ IN':'OUT'}
+</button>
+<button class="remove-btn" onclick="if(confirm('Delete ${name} permanently?'))removePlayer(${idx})">🗑</button>
+</div>`;
+});
+html+=`<div class="footer"><div class="footer-main">ONE TEAM. ONE GOAL.</div><div class="footer-sub">ALL STARS. ALL HEART.</div></div></div>`;
+return html;
+}
+function renderExport(){
+const totalFielded=INNINGS.filter(i=>Object.keys(state.innings[i]||{}).length>0).length;
+const totalPitchers=INNINGS.filter(i=>state.pitchers[i]).length;
+const totalBatters=(state.batting||[]).length;
+let html=`<div class="section">
+<div class="section-label-y">Export Lineup</div>
+<div style="color:#444;font-size:11px;margin-bottom:16px">Download or copy your complete game plan</div>
+<div class="stat-grid">
+<div class="stat-card"><div class="stat-val">${totalFielded}/6</div><div class="stat-lbl">INNINGS FIELDED</div></div>
+<div class="stat-card"><div class="stat-val">${totalPitchers}/6</div><div class="stat-lbl">PITCHERS SET</div></div>
+<div class="stat-card"><div class="stat-val">${totalBatters>0?totalBatters+' set':'None'}</div><div class="stat-lbl">BATTING ORDER</div></div>
+</div>
+<div class="section-label" style="margin-bottom:8px">Full Lineup Card</div>
+<div class="lineup-card">
+<div class="lc-header">
+<div class="lc-hcell" style="text-align:left">POS</div>
+${INNINGS.map(i=>`<div class="lc-hcell">INN ${i}</div>`).join('')}
+</div>
+<div class="lc-row pitcher">
+<div class="lc-pos p">P</div>
+${INNINGS.map(i=>{
+const name=state.pitchers[i];const p=name?getPlayerByName(name):null;
+return `<div class="lc-cell">${p?`<div class="lc-num">#${p.number}</div><div class="lc-name">${name.split(' ')[0]}</div>`:'<div class="lc-empty">—</div>'}</div>`;
+}).join('')}
+</div>
+${["C","1B","2B","3B","SS","LF","CF","RF"].map((pid,ri)=>`
+<div class="lc-row ${ri%2===0?'even':'odd'}">
+<div class="lc-pos">${pid}</div>
+${INNINGS.map(i=>{
+const name=(state.innings[i]||{})[pid];const p=name?getPlayerByName(name):null;
+return `<div class="lc-cell">${p?`<div class="lc-num">#${p.number}</div><div class="lc-name">${name.split(' ')[0]}</div>`:'<div class="lc-empty">—</div>'}</div>`;
+}).join('')}
+</div>`).join('')}
+</div>`;
+const bat1=state.batting||[];
+if(bat1.length){
+html+=`<div class="section-label" style="margin-bottom:8px">Batting Order</div>
+<div class="lineup-card" style="margin-bottom:18px">`;
+bat1.forEach((name,i)=>{
+const p=getPlayerByName(name);
+const fpos=Object.entries(state.innings[state.activeInning]||{}).find(([k,v])=>v===name)?.[0]||'—';
+html+=`<div class="bat-preview-item ${i%2===0?'even':'odd'}">
+<div class="bp-spot">${i+1}</div>
+<div class="bp-num">#${p?.number??'?'}</div>
+<span class="bp-name">${name}</span>
+<span class="bp-pos">${fpos}</span>
+</div>`;
+});
+html+=`</div>`;
+}
+html+=`<div class="section-label" style="margin-bottom:10px">Download / Share</div>
+<div class="export-btns">
+<button class="exp-btn primary" onclick="dlText()">📄 TEXT FILE — tap to download / copy</button>
+<button class="exp-btn secondary" onclick="dlCSV()">📊 SPREADSHEET (.csv) — download / copy</button>
+<button class="exp-btn secondary" onclick="exportPDF()" style="background:#0f2e14;color:#e8e800;border-color:#1a5c2a">🖨️ PRINT / SAVE AS PDF</button>
+<button class="exp-btn tertiary" onclick="copyClipboard()">📋 COPY TO CLIPBOARD</button>
+</div>
+</div>`;
+return html;
+}
+function renderGame(){
+const hasAny = INNINGS.some(i=>Object.keys(state.innings[i]||{}).length>0||state.pitchers[i]);
+if(!hasAny){
+return `<div class="section"><div class="gv-no-data">
+<div class="gv-no-icon">⚾</div>
+<div class="gv-no-text">No lineup built yet</div>
+<div class="gv-no-sub">Set your fielding positions and pitchers<br>then come back here for game day</div>
+</div></div>`;
+}
+const POS_ORDER = ["C","1B","2B","3B","SS","LF","CF","RF"];
+let html = `<div style="padding:12px 14px 0">
+<div style="color:var(--yellow);font-weight:900;font-size:16px;letter-spacing:1px">GAME DAY VIEW</div>
+<div style="color:#444;font-size:11px;margin-top:2px;margin-bottom:14px">Read-only · All innings at a glance</div>`;
 
-    response = client.messages.create(
-        model="claude-opus-4-6",
-        max_tokens=1200,
-        system=_SYSTEM,
-        messages=[{"role": "user", "content": user_msg}],
-    )
-    return response.content[0].text.strip()
+INNINGS.forEach(inn=>{
+const pos = state.innings[inn]||{};
+const pitcher = state.pitchers[inn];
+const filledCount = Object.keys(pos).length + (pitcher?1:0);
+if(filledCount===0)return;
 
+html+=`<div class="gv-inning">
+<div class="gv-inn-header">
+<div class="gv-inn-num">${inn}</div>
+<div>
+<div style="color:#0d1a0f;font-weight:900;font-size:13px;letter-spacing:1px">INNING ${inn}</div>
+<div style="color:rgba(0,30,0,.6);font-size:10px;font-weight:600">${filledCount} of 9 positions set</div>
+</div>
+</div>`;
 
-# ── Script parser ──────────────────────────────────────────────────────────────
-def parse_script(script: str) -> list[tuple[str, str]]:
-    """Return [(speaker, line), ...] where speaker is 'henry' or 'dad'."""
-    lines = []
-    for raw in script.splitlines():
-        raw = raw.strip()
-        if not raw:
-            continue
-        upper = raw.upper()
-        if upper.startswith("HENRY:"):
-            lines.append(("henry", raw[6:].strip()))
-        elif upper.startswith("DAD:"):
-            lines.append(("dad", raw[4:].strip()))
-        else:
-            log.debug("Skipping unrecognised line: %r", raw)
-    return lines
+// Pitcher row
+if(pitcher){
+const p=getPlayerByName(pitcher);
+html+=`<div class="gv-pitcher">
+<div class="gv-pitcher-badge">PITCHER</div>
+<div style="flex:1">
+<span class="gv-pitcher-name">${pitcher}</span>
+</div>
+<div class="gv-pitcher-num">#${p?.number??'?'}</div>
+</div>`;
+}
 
+// Position grid
+const filledPos = POS_ORDER.filter(pid=>pos[pid]);
+if(filledPos.length){
+html+=`<div class="gv-pos-grid">`;
+filledPos.forEach(pid=>{
+const name=pos[pid];
+const p=getPlayerByName(name);
+html+=`<div class="gv-pos-item">
+<div class="gv-pos-tag">${pid}</div>
+<div class="gv-pos-num">#${p?.number??'?'}</div>
+<div class="gv-pos-name">${name.split(' ')[0]}</div>
+</div>`;
+});
+// pad to even number
+if(filledPos.length%2!==0) html+=`<div class="gv-pos-item"></div>`;
+html+=`</div>`;
+}
+html+=`</div>`;
+});
 
-# ── ElevenLabs TTS ─────────────────────────────────────────────────────────────
-def _tts(text: str, voice_id: str) -> bytes:
-    r = requests.post(
-        f"{ELEVENLABS_BASE}/text-to-speech/{voice_id}",
-        headers={
-            "Accept":       "audio/mpeg",
-            "Content-Type": "application/json",
-            "xi-api-key":   ELEVENLABS_API_KEY,
-        },
-        json={
-            "text": text,
-            "model_id": ELEVENLABS_MODEL,
-            "voice_settings": {
-                "stability":         0.45,
-                "similarity_boost":  0.80,
-                "style":             0.00,
-                "use_speaker_boost": True,
-            },
-        },
-        timeout=60,
-    )
-    r.raise_for_status()
-    return r.content
+// Batting order at the bottom
+const bat = state.batting||[];
+if(bat.length){
+html+=`<div class="gv-inning" style="margin-top:4px">
+<div class="gv-inn-header" style="background:#1a3a0a">
+<div style="font-size:18px">🏏</div>
+<div>
+<div style="color:#0d1a0f;font-weight:900;font-size:13px;letter-spacing:1px">BATTING ORDER</div>
+<div style="color:rgba(0,30,0,.6);font-size:10px;font-weight:600">All innings · ${bat.length} batters</div>
+</div>
+</div>
+<div style="padding:10px 14px">`;
+bat.forEach((name,i)=>{
+const p=getPlayerByName(name);
+html+=`<div class="gv-bat-row">
+<div class="gv-bat-spot">${i+1}</div>
+<div class="gv-bat-num">#${p?.number??'?'}</div>
+<div class="gv-bat-name">${name}</div>
+</div>`;
+});
+html+=`</div></div>`;
+}
+html+=`</div>`;
+return html;
+}
 
-
-def build_audio(lines: list[tuple[str, str]]) -> AudioSegment:
-    """Synthesise every dialogue line and stitch with natural pauses."""
-    episode    = AudioSegment.empty()
-    gap_same   = AudioSegment.silent(duration=350)   # same-speaker follow-up
-    gap_switch = AudioSegment.silent(duration=650)   # speaker change
-    tmp_paths: list[str] = []
-    prev_spk: Optional[str] = None
-
-    try:
-        for i, (spk, text) in enumerate(lines, 1):
-            voice = HENRY_VOICE_ID if spk == "henry" else DAD_VOICE_ID
-            log.info("  [%d/%d] %-5s  synthesising…", i, len(lines), spk.upper())
-            data = _tts(text, voice)
-
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
-                f.write(data)
-                tmp_paths.append(f.name)
-
-            seg = AudioSegment.from_mp3(tmp_paths[-1])
-
-            if prev_spk is not None:
-                episode += gap_switch if prev_spk != spk else gap_same
-
-            episode  += seg
-            prev_spk  = spk
-    finally:
-        for p in tmp_paths:
-            try:
-                os.unlink(p)
-            except OSError:
-                pass
-
-    return episode
-
-
-# ── Main pipeline ──────────────────────────────────────────────────────────────
-def run(date_str: Optional[str] = None) -> Path:
-    _check_config()
-
-    if date_str is None:
-        date_str = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-
-    log.info("═══  Sox Daily Recap  ·  %s  ═══", date_str)
-
-    # 1. Game data
-    log.info("Step 1/4  Fetching game data from MLB Stats API…")
-    game = fetch_game(date_str)
-    if game and game.get("state") == "Final":
-        log.info("         %s  vs %s  —  Sox %s–%s  (%s)",
-                 game["result"].upper(), game["opponent"],
-                 game["sox_score"], game["opp_score"], game["home_away"])
-    elif game is None:
-        log.info("         Off day.")
-    else:
-        log.info("         Game state: %s", game.get("state"))
-
-    # 2. Script
-    log.info("Step 2/4  Generating script with Claude…")
-    script      = generate_script(game, date_str)
-    script_lines = parse_script(script)
-    log.info("         %d dialogue lines parsed.", len(script_lines))
-    if not script_lines:
-        raise RuntimeError(
-            "Script produced 0 parseable lines.\n"
-            "Raw script output:\n" + script
-        )
-
-    # 3. Audio
-    log.info("Step 3/4  Synthesising voices with ElevenLabs…")
-    episode      = build_audio(script_lines)
-    duration_sec = len(episode) / 1000
-    log.info("         Episode length: %.1f s", duration_sec)
-
-    # 4. Save
-    log.info("Step 4/4  Saving MP3…")
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = OUTPUT_DIR / f"sox-recap-{date_str}.mp3"
-    episode.export(
-        str(out_path),
-        format="mp3",
-        bitrate="128k",
-        tags={
-            "title":  f"Sox Daily Recap – {date_str}",
-            "artist": "Henry & Dad",
-            "album":  "Sox Daily Recap",
-        },
-    )
-    log.info("         Saved → %s", out_path)
-    return out_path
-
-
-if __name__ == "__main__":
-    date_arg = sys.argv[1] if len(sys.argv) > 1 else None
-    run(date_arg)
+function render(){
+const content=document.getElementById('content');
+switch(state.activeTab){
+case 'game':    content.innerHTML=renderGame();break;
+case 'field':   content.innerHTML=renderField();break;
+case 'batting': content.innerHTML=renderBatting();break;
+case 'pitches': content.innerHTML=renderPitches();break;
+case 'roster':  content.innerHTML=renderRoster();break;
+case 'export':  content.innerHTML=renderExport();break;
+}
+// Sync inning buttons
+INNINGS.forEach(n=>document.getElementById('inn'+n).classList.toggle('active',n===state.activeInning));
+// Focus new player input if visible
+const ni=document.getElementById('new-name');
+if(ni)setTimeout(()=>ni.focus(),50);
+const ei=document.getElementById('edit-name');
+if(ei)setTimeout(()=>ei.focus(),50);
+const bar=document.getElementById('inning-bar');
+bar.style.display=(state.activeTab==='field'||state.activeTab==='pitches')?'flex':'none';
+}
+render();
+</script></body>
+</html>
