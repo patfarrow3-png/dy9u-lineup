@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>DY 9U All-Stars Lineup Manager</title>
-<style>*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}body{background:#0d1a0f;color:#fff;font-family:'Helvetica Neue',Arial,sans-serif;min-height:100vh;overscroll-behavior:none}button{cursor:pointer;font-family:inherit}input{font-family:inherit}:root{--green:#1a5c2a;--green-l:#2a7a3a;--yellow:#e8e800;--dark:#0d1a0f;--card:#0d160f;--card2:#111a12;}#app{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}.header{background:#0a120c;border-bottom:3px solid var(--green);padding:12px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0}.header img{width:54px;height:54px;object-fit:contain;flex-shrink:0}.header-title{color:var(--yellow);font-weight:900;font-size:18px;letter-spacing:2px;line-height:1.1}.header-sub{color:var(--green-l);font-size:11px;font-weight:600;letter-spacing:1px}.tabs{display:flex;background:#0a120c;border-bottom:1px solid rgba(26,92,42,.3);flex-shrink:0}.tab{flex:1;padding:11px 2px;background:none;border:none;color:#555;font-weight:700;font-size:10px;letter-spacing:.5px;border-bottom:2px solid transparent;transition:color .15s}.tab.active{color:var(--yellow);border-bottom:2px solid var(--yellow)}.inning-bar{padding:12px 16px 0;background:#0d160f;display:flex;align-items:center;gap:6px;flex-shrink:0}.inn-label{color:var(--yellow);font-weight:700;font-size:11px;letter-spacing:1px}.inn-btn{width:34px;height:34px;border-radius:7px;background:#1a1a1a;color:#666;font-weight:800;font-size:14px;border:1px solid #2a2a2a;transition:all .15s}.inn-btn.active{background:var(--green);color:#fff;border:2px solid var(--green-l)}.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}.section{padding:14px 16px}.section-label{color:var(--green-l);font-weight:700;font-size:10px;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}.section-label-y{color:var(--yellow);font-weight:700;font-size:11px;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}.player-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.player-btn{background:#111a12;border:1px solid #222;border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:8px;text-align:left;transition:all .15s;width:100%}.player-btn.assigned{border-color:rgba(26,92,42,.35)}.player-btn.selected{background:var(--green);border:2px solid var(--yellow)}.num-badge{background:var(--green);border-radius:5px;padding:2px 7px;min-width:32px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;font-family:monospace;flex-shrink:0}.num-badge.sel{background:#0d1a0f;border:1px solid var(--yellow);color:var(--yellow)}.player-fname{font-size:12px;font-weight:700;color:#ddd;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player-pos{font-size:10px;color:#444;font-weight:600}.player-btn.selected .player-fname{color:var(--yellow)}.player-btn.selected .player-pos{color:rgba(255,255,255,.6)}.player-btn.assigned .player-pos{color:var(--yellow)}.field-wrap{position:relative;width:100%;padding-bottom:86%;border-radius:12px;overflow:hidden}.field-wrap svg{position:absolute;inset:0;width:100%;height:100%}.pos-pin{position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px;z-index:10;transform:translate(-50%,-50%)}.pos-btn{width:32px;height:32px;border-radius:6px;font-weight:900;font-size:10px;transition:all .15s;border:2px dashed rgba(26,92,42,.55);background:rgba(0,0,0,.27);color:#aaa}.pos-btn.filled{background:var(--green);border:2px solid var(--yellow);color:var(--yellow);box-shadow:0 0 6px var(--green)}.pos-btn.targeting{border:2px solid var(--yellow);background:rgba(255,255,255,.13);box-shadow:0 0 10px rgba(232,232,0,.4)}.pos-label{background:rgba(0,0,0,.78);border-radius:4px;padding:1px 5px;font-size:8px;color:#888;white-space:nowrap;font-weight:700}.pos-label.filled{color:var(--yellow)}.prog-wrap{display:flex;align-items:center;gap:8px;margin:10px 0 6px}.prog-bar{flex:1;background:#1a1a1a;border-radius:4px;height:5px}.prog-fill{height:5px;background:var(--green);border-radius:4px;transition:width .3s;box-shadow:0 0 6px var(--green)}.prog-label{font-size:11px;font-weight:700;color:#555}.prog-label.done{color:var(--yellow)}.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}.action-btn{background:#111a12;border:1px solid rgba(26,92,42,.27);border-radius:8px;color:#777;font-weight:700;font-size:10px;padding:11px;letter-spacing:.5px}.action-btn:disabled{color:#333}.bat-item{display:flex;align-items:center;gap:10px;background:#111a12;border-radius:10px;padding:9px 12px;margin-bottom:6px;border:1px solid rgba(26,92,42,.2)}.bat-num{width:28px;height:28px;border-radius:50%;background:var(--green);color:var(--yellow);font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.bat-pos{font-size:10px;color:var(--green-l);font-weight:700}.bat-arrows{display:flex;flex-direction:column;gap:1px}.arr-btn{background:none;border:none;color:#666;font-size:11px;padding:0 4px;line-height:1}.arr-btn:disabled{color:#222}.remove-btn{background:#200000;border:none;border-radius:6px;color:#c53935;font-weight:700;padding:4px 8px;font-size:12px}.add-item{display:flex;width:100%;align-items:center;gap:10px;background:#0d160f;border-radius:10px;padding:9px 12px;margin-bottom:6px;border:1px solid rgba(26,92,42,.13);text-align:left}.add-plus{color:var(--green-l);font-weight:900;font-size:16px;line-height:1}.add-name{flex:1;color:#888;font-weight:600;font-size:13px}.empty-state{color:#333;text-align:center;padding:28px 0;font-size:13px;border:1px dashed rgba(26,92,42,.27);border-radius:10px;margin-bottom:12px}.pitch-list{background:#0d160f;border-radius:12px;overflow:hidden;border:1px solid rgba(26,92,42,.27);margin-bottom:18px}.pitch-row{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;border-bottom:1px solid rgba(26,92,42,.13);transition:background .15s}.pitch-row:last-child{border-bottom:none}.pitch-row.active{background:rgba(26,92,42,.13)}.pitch-inn-box{width:34px;height:34px;border-radius:8px;background:#1a1a1a;color:#555;font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}.pitch-row.active .pitch-inn-box{background:var(--green);color:var(--yellow)}.pitch-inn-label{font-size:10px;color:#444;font-weight:700;letter-spacing:1px}.pitch-name{font-size:13px;font-weight:700;color:#333;margin-top:1px}.pitch-name.set{color:#fff}.pitch-badge{background:var(--green);border-radius:6px;padding:3px 9px;font-size:13px;font-weight:900;color:var(--yellow)}.roster-item{background:#0d160f;border:1px solid rgba(26,92,42,.2);border-radius:10px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;gap:10px}.roster-num{width:36px;height:36px;border-radius:8px;background:var(--green);border:2px solid var(--green-l);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--yellow);flex-shrink:0}.roster-name{flex:1;font-weight:600;font-size:13px;cursor:pointer}.edit-btn{background:none;border:none;color:#333;font-size:14px;padding:4px}.add-player-form{background:#111a12;border:1px solid var(--green);border-radius:10px;padding:12px;margin-bottom:12px}.add-player-row{display:flex;gap:8px;margin-bottom:8px}.add-player-row input{background:#0d0d0d;border:1px solid var(--green);border-radius:7px;color:#fff;padding:9px 12px;font-size:13px;outline:none}.add-player-row input::placeholder{color:#444}.add-player-row input:first-child{flex:1}.add-player-row input:last-child{width:60px;color:var(--yellow);font-weight:700;text-align:center}.add-player-actions{display:flex;gap:8px}.btn-primary{background:var(--green);border:none;border-radius:7px;color:var(--yellow);font-weight:800;padding:9px;font-size:13px}.btn-cancel{background:#1a1a1a;border:none;border-radius:7px;color:#666;padding:9px 14px;font-size:13px}.inline-edit{display:flex;gap:6px;flex:1}.inline-edit input{background:transparent;border:none;color:#fff;font-weight:600;font-size:13px;outline:none;padding:2px 0}.inline-edit input:first-child{flex:1;border-bottom:1px solid var(--yellow)}.inline-edit input:last-child{width:48px;border-bottom:1px solid var(--green);color:var(--yellow);font-weight:700;text-align:center}.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px}.stat-card{background:#111a12;border-radius:8px;padding:10px 8px;text-align:center}.stat-val{color:var(--yellow);font-weight:900;font-size:16px}.stat-lbl{color:#444;font-size:8px;font-weight:700;letter-spacing:.5px;margin-top:2px}.lineup-card{background:#0d160f;border:1px solid rgba(26,92,42,.2);border-radius:12px;overflow:hidden;margin-bottom:18px}.lc-header{display:grid;grid-template-columns:32px 1fr 1fr 1fr 1fr 1fr 1fr;background:var(--green);padding:6px 10px;gap:4px}.lc-hcell{color:var(--yellow);font-weight:800;font-size:9px;text-align:center}.lc-hcell:first-child{text-align:left}.lc-row{display:grid;grid-template-columns:32px 1fr 1fr 1fr 1fr 1fr 1fr;padding:5px 10px;gap:4px;border-bottom:1px solid rgba(26,92,42,.07)}.lc-row.pitcher{background:#0f1f11;border-bottom:1px solid rgba(26,92,42,.13)}.lc-row.even{background:#0d160f}.lc-row.odd{background:#0a120c}.lc-row.bat-row{background:#111a12;border-top:1px solid rgba(26,92,42,.2);border-bottom:none}.lc-pos{font-size:9px;font-weight:800;color:var(--green-l);display:flex;align-items:center}.lc-pos.p{color:var(--yellow)}.lc-pos.bat{font-size:7px;color:#555;line-height:1.1}.lc-cell{text-align:center}.lc-num{font-size:9px;font-weight:900;color:var(--yellow)}.lc-name{font-size:7px;color:#aaa}.lc-empty{font-size:9px;color:#222}.lc-set{font-size:7px;color:var(--green-l);font-weight:700}.bat-preview-item{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid rgba(26,92,42,.07)}.bat-preview-item.even{background:#0d160f}.bat-preview-item.odd{background:#0a120c}.bp-spot{width:22px;height:22px;border-radius:50%;background:var(--green);color:var(--yellow);font-weight:900;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.bp-num{background:var(--green);border-radius:4px;padding:1px 6px;font-size:11px;font-weight:900;color:var(--yellow)}.bp-name{flex:1;font-size:12px;font-weight:600;color:#ddd}.bp-pos{font-size:10px;color:var(--green-l);font-weight:700}.export-btns{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}.exp-btn{border-radius:10px;font-weight:800;font-size:13px;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;border:none}.exp-btn.primary{background:var(--green);color:var(--yellow);border:1px solid rgba(232,232,0,.27)}.exp-btn.secondary{background:#111a12;color:#ccc;border:1px solid var(--green)}.exp-btn.tertiary{background:#111a12;color:#888;border:1px solid rgba(26,92,42,.27)}.footer{text-align:center;padding:12px;border-top:1px solid rgba(26,92,42,.13)}.footer-main{color:var(--green);font-size:11px;font-weight:700;letter-spacing:2px}.footer-sub{color:#333;font-size:10px;margin-top:4px;letter-spacing:1px}#toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:var(--yellow);font-weight:700;font-size:13px;padding:10px 22px;border-radius:50px;opacity:0;transition:all .3s;z-index:999;white-space:nowrap;pointer-events:none}#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.add-roster-btn{background:var(--green);border:1px solid rgba(232,232,0,.33);border-radius:8px;color:var(--yellow);font-weight:800;font-size:12px;padding:6px 14px}.roster-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.roster-item.inactive{opacity:.45;border-color:rgba(255,255,255,.06)}.roster-num.inactive{background:#2a2a2a;border-color:#333;color:#666}.bench-toggle{background:none;border:1px solid #333;border-radius:6px;color:#555;font-size:11px;font-weight:700;padding:4px 8px;transition:all .15s}.bench-toggle.active-player{border-color:var(--green);color:var(--green-l)}.bench-section-label{color:#444;font-size:9px;font-weight:800;letter-spacing:1px;padding:8px 0 6px;text-transform:uppercase;border-top:1px solid #1a1a1a;margin-top:4px}.gv-inning{background:#0a120c;border-radius:14px;margin-bottom:14px;overflow:hidden;border:1px solid rgba(26,92,42,.3)}.gv-inn-header{background:var(--green);padding:10px 14px;display:flex;align-items:center;gap:10px}.gv-inn-num{color:#0d1a0f;font-weight:900;font-size:20px;line-height:1}.gv-inn-label{color:rgba(0,30,0,.7);font-weight:700;font-size:10px;letter-spacing:2px}.gv-pitcher{background:#0f2e14;padding:8px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(26,92,42,.2)}.gv-pitcher-badge{background:var(--yellow);color:#0d1a0f;font-weight:900;font-size:10px;letter-spacing:1px;padding:2px 7px;border-radius:4px}.gv-pitcher-name{color:var(--yellow);font-weight:700;font-size:14px}.gv-pitcher-num{color:rgba(232,232,0,.6);font-size:12px;font-weight:700}.gv-pos-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.gv-pos-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(26,92,42,.08)}.gv-pos-item:nth-child(odd){border-right:1px solid rgba(26,92,42,.08)}.gv-pos-tag{background:rgba(26,92,42,.4);color:var(--green-l);font-weight:800;font-size:9px;letter-spacing:.5px;padding:2px 5px;border-radius:3px;min-width:24px;text-align:center;flex-shrink:0}.gv-pos-num{color:var(--yellow);font-weight:900;font-size:11px;flex-shrink:0}.gv-pos-name{color:#ddd;font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gv-empty{color:#333;font-style:italic;font-size:12px}.gv-bat-section{padding:10px 14px;border-top:1px solid rgba(26,92,42,.15)}.gv-bat-title{color:var(--green-l);font-size:9px;font-weight:800;letter-spacing:1px;margin-bottom:8px}.gv-bat-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}.gv-bat-spot{width:20px;height:20px;border-radius:50%;background:rgba(26,92,42,.5);color:var(--yellow);font-weight:900;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.gv-bat-num{color:var(--yellow);font-weight:900;font-size:11px;flex-shrink:0;min-width:30px}.gv-bat-name{color:#ddd;font-size:12px;font-weight:600}.gv-no-data{text-align:center;padding:40px 20px;color:#2a3a2a}.gv-no-icon{font-size:36px;margin-bottom:12px}.gv-no-text{font-size:14px;color:#3a5a3a;font-weight:600}.gv-no-sub{font-size:11px;color:#2a3a2a;margin-top:6px}</style>
+<style>*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}body{background:#0d1a0f;color:#fff;font-family:'Helvetica Neue',Arial,sans-serif;min-height:100vh;overscroll-behavior:none}button{cursor:pointer;font-family:inherit}input{font-family:inherit}:root{--green:#1a5c2a;--green-l:#2a7a3a;--yellow:#e8e800;--dark:#0d1a0f;--card:#0d160f;--card2:#111a12;}#app{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}.header{background:#0a120c;border-bottom:3px solid var(--green);padding:12px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0}.header img{width:54px;height:54px;object-fit:contain;flex-shrink:0}.header-title{color:var(--yellow);font-weight:900;font-size:18px;letter-spacing:2px;line-height:1.1}.header-sub{color:var(--green-l);font-size:11px;font-weight:600;letter-spacing:1px}.tabs{display:flex;background:#0a120c;border-bottom:1px solid rgba(26,92,42,.3);flex-shrink:0}.tab{flex:1;padding:11px 2px;background:none;border:none;color:#555;font-weight:700;font-size:10px;letter-spacing:.5px;border-bottom:2px solid transparent;transition:color .15s}.tab.active{color:var(--yellow);border-bottom:2px solid var(--yellow)}.inning-bar{padding:12px 16px 0;background:#0d160f;display:flex;align-items:center;gap:6px;flex-shrink:0}.inn-label{color:var(--yellow);font-weight:700;font-size:11px;letter-spacing:1px}.inn-btn{width:34px;height:34px;border-radius:7px;background:#1a1a1a;color:#666;font-weight:800;font-size:14px;border:1px solid #2a2a2a;transition:all .15s}.inn-btn.active{background:var(--green);color:#fff;border:2px solid var(--green-l)}.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}.section{padding:14px 16px}.section-label{color:var(--green-l);font-weight:700;font-size:10px;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}.section-label-y{color:var(--yellow);font-weight:700;font-size:11px;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}.player-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.player-btn{background:#111a12;border:1px solid #222;border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:8px;text-align:left;transition:all .15s;width:100%}.player-btn.assigned{border-color:rgba(26,92,42,.35)}.player-btn.selected{background:var(--green);border:2px solid var(--yellow)}.num-badge{background:var(--green);border-radius:5px;padding:2px 7px;min-width:32px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;font-family:monospace;flex-shrink:0}.num-badge.sel{background:#0d1a0f;border:1px solid var(--yellow);color:var(--yellow)}.player-fname{font-size:12px;font-weight:700;color:#ddd;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player-pos{font-size:10px;color:#444;font-weight:600}.player-btn.selected .player-fname{color:var(--yellow)}.player-btn.selected .player-pos{color:rgba(255,255,255,.6)}.player-btn.assigned .player-pos{color:var(--yellow)}.field-wrap{position:relative;width:100%;padding-bottom:86%;border-radius:12px;overflow:hidden}.field-wrap svg{position:absolute;inset:0;width:100%;height:100%}.pos-pin{position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px;z-index:10;transform:translate(-50%,-50%)}.pos-btn{width:32px;height:32px;border-radius:6px;font-weight:900;font-size:10px;transition:all .15s;border:2px dashed rgba(26,92,42,.55);background:rgba(0,0,0,.27);color:#aaa}.pos-btn.filled{background:var(--green);border:2px solid var(--yellow);color:var(--yellow);box-shadow:0 0 6px var(--green)}.pos-btn.targeting{border:2px solid var(--yellow);background:rgba(255,255,255,.13);box-shadow:0 0 10px rgba(232,232,0,.4)}.pos-label{background:rgba(0,0,0,.78);border-radius:4px;padding:1px 5px;font-size:8px;color:#888;white-space:nowrap;font-weight:700}.pos-label.filled{color:var(--yellow)}.prog-wrap{display:flex;align-items:center;gap:8px;margin:10px 0 6px}.prog-bar{flex:1;background:#1a1a1a;border-radius:4px;height:5px}.prog-fill{height:5px;background:var(--green);border-radius:4px;transition:width .3s;box-shadow:0 0 6px var(--green)}.prog-label{font-size:11px;font-weight:700;color:#555}.prog-label.done{color:var(--yellow)}.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}.action-btn{background:#111a12;border:1px solid rgba(26,92,42,.27);border-radius:8px;color:#777;font-weight:700;font-size:10px;padding:11px;letter-spacing:.5px}.action-btn:disabled{color:#333}.bat-item{display:flex;align-items:center;gap:10px;background:#111a12;border-radius:10px;padding:9px 12px;margin-bottom:6px;border:1px solid rgba(26,92,42,.2)}.bat-num{width:28px;height:28px;border-radius:50%;background:var(--green);color:var(--yellow);font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.bat-pos{font-size:10px;color:var(--green-l);font-weight:700}.bat-arrows{display:flex;flex-direction:column;gap:1px}.arr-btn{background:none;border:none;color:#666;font-size:11px;padding:0 4px;line-height:1}.arr-btn:disabled{color:#222}.remove-btn{background:#200000;border:none;border-radius:6px;color:#c53935;font-weight:700;padding:4px 8px;font-size:12px}.add-item{display:flex;width:100%;align-items:center;gap:10px;background:#0d160f;border-radius:10px;padding:9px 12px;margin-bottom:6px;border:1px solid rgba(26,92,42,.13);text-align:left}.add-plus{color:var(--green-l);font-weight:900;font-size:16px;line-height:1}.add-name{flex:1;color:#888;font-weight:600;font-size:13px}.empty-state{color:#333;text-align:center;padding:28px 0;font-size:13px;border:1px dashed rgba(26,92,42,.27);border-radius:10px;margin-bottom:12px}.pitch-list{background:#0d160f;border-radius:12px;overflow:hidden;border:1px solid rgba(26,92,42,.27);margin-bottom:18px}.pitch-row{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;border-bottom:1px solid rgba(26,92,42,.13);transition:background .15s}.pitch-row:last-child{border-bottom:none}.pitch-row.active{background:rgba(26,92,42,.13)}.pitch-inn-box{width:34px;height:34px;border-radius:8px;background:#1a1a1a;color:#555;font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}.pitch-row.active .pitch-inn-box{background:var(--green);color:var(--yellow)}.pitch-inn-label{font-size:10px;color:#444;font-weight:700;letter-spacing:1px}.pitch-name{font-size:13px;font-weight:700;color:#333;margin-top:1px}.pitch-name.set{color:#fff}.pitch-badge{background:var(--green);border-radius:6px;padding:3px 9px;font-size:13px;font-weight:900;color:var(--yellow)}.roster-item{background:#0d160f;border:1px solid rgba(26,92,42,.2);border-radius:10px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;gap:10px}.roster-num{width:36px;height:36px;border-radius:8px;background:var(--green);border:2px solid var(--green-l);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:var(--yellow);flex-shrink:0}.roster-name{flex:1;font-weight:600;font-size:13px;cursor:pointer}.edit-btn{background:none;border:none;color:#333;font-size:14px;padding:4px}.add-player-form{background:#111a12;border:1px solid var(--green);border-radius:10px;padding:12px;margin-bottom:12px}.add-player-row{display:flex;gap:8px;margin-bottom:8px}.add-player-row input{background:#0d0d0d;border:1px solid var(--green);border-radius:7px;color:#fff;padding:9px 12px;font-size:13px;outline:none}.add-player-row input::placeholder{color:#444}.add-player-row input:first-child{flex:1}.add-player-row input:last-child{width:60px;color:var(--yellow);font-weight:700;text-align:center}.add-player-actions{display:flex;gap:8px}.btn-primary{background:var(--green);border:none;border-radius:7px;color:var(--yellow);font-weight:800;padding:9px;font-size:13px}.btn-cancel{background:#1a1a1a;border:none;border-radius:7px;color:#666;padding:9px 14px;font-size:13px}.inline-edit{display:flex;gap:6px;flex:1}.inline-edit input{background:transparent;border:none;color:#fff;font-weight:600;font-size:13px;outline:none;padding:2px 0}.inline-edit input:first-child{flex:1;border-bottom:1px solid var(--yellow)}.inline-edit input:last-child{width:48px;border-bottom:1px solid var(--green);color:var(--yellow);font-weight:700;text-align:center}.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px}.stat-card{background:#111a12;border-radius:8px;padding:10px 8px;text-align:center}.stat-val{color:var(--yellow);font-weight:900;font-size:16px}.stat-lbl{color:#444;font-size:8px;font-weight:700;letter-spacing:.5px;margin-top:2px}.lineup-card{background:#0d160f;border:1px solid rgba(26,92,42,.2);border-radius:12px;overflow:hidden;margin-bottom:18px}.lc-header{display:grid;grid-template-columns:32px 1fr 1fr 1fr 1fr 1fr 1fr;background:var(--green);padding:6px 10px;gap:4px}.lc-hcell{color:var(--yellow);font-weight:800;font-size:9px;text-align:center}.lc-hcell:first-child{text-align:left}.lc-row{display:grid;grid-template-columns:32px 1fr 1fr 1fr 1fr 1fr 1fr;padding:5px 10px;gap:4px;border-bottom:1px solid rgba(26,92,42,.07)}.lc-row.pitcher{background:#0f1f11;border-bottom:1px solid rgba(26,92,42,.13)}.lc-row.even{background:#0d160f}.lc-row.odd{background:#0a120c}.lc-row.bat-row{background:#111a12;border-top:1px solid rgba(26,92,42,.2);border-bottom:none}.lc-pos{font-size:9px;font-weight:800;color:var(--green-l);display:flex;align-items:center}.lc-pos.p{color:var(--yellow)}.lc-pos.bat{font-size:7px;color:#555;line-height:1.1}.lc-cell{text-align:center}.lc-num{font-size:9px;font-weight:900;color:var(--yellow)}.lc-name{font-size:7px;color:#aaa}.lc-empty{font-size:9px;color:#222}.lc-set{font-size:7px;color:var(--green-l);font-weight:700}.bat-preview-item{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid rgba(26,92,42,.07)}.bat-preview-item.even{background:#0d160f}.bat-preview-item.odd{background:#0a120c}.bp-spot{width:22px;height:22px;border-radius:50%;background:var(--green);color:var(--yellow);font-weight:900;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.bp-num{background:var(--green);border-radius:4px;padding:1px 6px;font-size:11px;font-weight:900;color:var(--yellow)}.bp-name{flex:1;font-size:12px;font-weight:600;color:#ddd}.bp-pos{font-size:10px;color:var(--green-l);font-weight:700}.export-btns{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}.exp-btn{border-radius:10px;font-weight:800;font-size:13px;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;border:none}.exp-btn.primary{background:var(--green);color:var(--yellow);border:1px solid rgba(232,232,0,.27)}.exp-btn.secondary{background:#111a12;color:#ccc;border:1px solid var(--green)}.exp-btn.tertiary{background:#111a12;color:#888;border:1px solid rgba(26,92,42,.27)}.footer{text-align:center;padding:12px;border-top:1px solid rgba(26,92,42,.13)}.footer-main{color:var(--green);font-size:11px;font-weight:700;letter-spacing:2px}.footer-sub{color:#333;font-size:10px;margin-top:4px;letter-spacing:1px}#toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:var(--yellow);font-weight:700;font-size:13px;padding:10px 22px;border-radius:50px;opacity:0;transition:all .3s;z-index:999;white-space:nowrap;pointer-events:none}#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}#confirm-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9000;align-items:center;justify-content:center;padding:24px}#confirm-modal.show{display:flex}#confirm-box{background:#111a12;border:1px solid #c53935;border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center}.confirm-title{color:#c53935;font-weight:900;font-size:16px;margin-bottom:8px}.confirm-msg{color:#aaa;font-size:13px;margin-bottom:20px;line-height:1.5}.confirm-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}.confirm-yes{background:#c53935;border:none;border-radius:8px;color:#fff;font-weight:800;font-size:14px;padding:12px;cursor:pointer}.confirm-no{background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#888;font-weight:700;font-size:14px;padding:12px;cursor:pointer}.add-roster-btn{background:var(--green);border:1px solid rgba(232,232,0,.33);border-radius:8px;color:var(--yellow);font-weight:800;font-size:12px;padding:6px 14px}.roster-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.roster-item.inactive{opacity:.45;border-color:rgba(255,255,255,.06)}.roster-num.inactive{background:#2a2a2a;border-color:#333;color:#666}.bench-toggle{background:none;border:1px solid #333;border-radius:6px;color:#555;font-size:11px;font-weight:700;padding:4px 8px;transition:all .15s}.bench-toggle.active-player{border-color:var(--green);color:var(--green-l)}.bench-section-label{color:#444;font-size:9px;font-weight:800;letter-spacing:1px;padding:8px 0 6px;text-transform:uppercase;border-top:1px solid #1a1a1a;margin-top:4px}.gv-inning{background:#0a120c;border-radius:14px;margin-bottom:14px;overflow:hidden;border:1px solid rgba(26,92,42,.3)}.gv-inn-header{background:var(--green);padding:10px 14px;display:flex;align-items:center;gap:10px}.gv-inn-num{color:#0d1a0f;font-weight:900;font-size:20px;line-height:1}.gv-inn-label{color:rgba(0,30,0,.7);font-weight:700;font-size:10px;letter-spacing:2px}.gv-pitcher{background:#0f2e14;padding:8px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(26,92,42,.2)}.gv-pitcher-badge{background:var(--yellow);color:#0d1a0f;font-weight:900;font-size:10px;letter-spacing:1px;padding:2px 7px;border-radius:4px}.gv-pitcher-name{color:var(--yellow);font-weight:700;font-size:14px}.gv-pitcher-num{color:rgba(232,232,0,.6);font-size:12px;font-weight:700}.gv-pos-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.gv-pos-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(26,92,42,.08)}.gv-pos-item:nth-child(odd){border-right:1px solid rgba(26,92,42,.08)}.gv-pos-tag{background:rgba(26,92,42,.4);color:var(--green-l);font-weight:800;font-size:9px;letter-spacing:.5px;padding:2px 5px;border-radius:3px;min-width:24px;text-align:center;flex-shrink:0}.gv-pos-num{color:var(--yellow);font-weight:900;font-size:11px;flex-shrink:0}.gv-pos-name{color:#ddd;font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gv-empty{color:#333;font-style:italic;font-size:12px}.gv-bat-section{padding:10px 14px;border-top:1px solid rgba(26,92,42,.15)}.gv-bat-title{color:var(--green-l);font-size:9px;font-weight:800;letter-spacing:1px;margin-bottom:8px}.gv-bat-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}.gv-bat-spot{width:20px;height:20px;border-radius:50%;background:rgba(26,92,42,.5);color:var(--yellow);font-weight:900;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.gv-bat-num{color:var(--yellow);font-weight:900;font-size:11px;flex-shrink:0;min-width:30px}.gv-bat-name{color:#ddd;font-size:12px;font-weight:600}.gv-no-data{text-align:center;padding:40px 20px;color:#2a3a2a}.gv-no-icon{font-size:36px;margin-bottom:12px}.gv-no-text{font-size:14px;color:#3a5a3a;font-weight:600}.gv-no-sub{font-size:11px;color:#2a3a2a;margin-top:6px}.clear-game-btn{width:100%;background:#1a0000;border:1px solid #c53935;border-radius:10px;color:#c53935;font-weight:800;font-size:13px;padding:14px;margin-bottom:20px;display:flex;align-items:center;justify-content:center;gap:8px}.clear-game-btn:active{background:#2a0000}.bench-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px}.bench-btn{background:#111a12;border:1px solid #222;border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:8px;text-align:left;transition:all .15s;width:100%}.bench-btn.benched{background:#1a0a00;border-color:#8B4513}.bench-btn.benched .player-fname{color:#a07050}.gv-bench-section{background:#1a0a00;border-top:1px solid rgba(139,69,19,.3);padding:8px 14px}.gv-bench-label{color:#8B4513;font-size:9px;font-weight:800;letter-spacing:1px;margin-bottom:6px}.gv-bench-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}.gv-bench-num{color:#a07050;font-weight:900;font-size:11px;min-width:30px}.gv-bench-name{color:#a07050;font-size:12px;font-weight:600}</style>
 </head>
 <body>
 <div id="app">
@@ -34,7 +34,17 @@
 </div>
 <div class="content" id="content"></div>
 </div>
-<div id="toast"></div><script>
+<div id="toast"></div>
+<div id="confirm-modal">
+<div id="confirm-box">
+<div class="confirm-title">🆕 Start New Game?</div>
+<div class="confirm-msg">This will clear all innings, pitchers, batting order and bench assignments.<br><br>Your roster stays intact.</div>
+<div class="confirm-btns">
+<button class="confirm-no" onclick="closeConfirm()">Cancel</button>
+<button class="confirm-yes" onclick="confirmClearGame()">Clear & Start</button>
+</div>
+</div>
+</div><script>
 // ── State ──
 const INNINGS = [1,2,3,4,5,6];
 const POS_LABELS = {P:"Pitcher",C:"Catcher","1B":"1st Base","2B":"2nd Base","3B":"3rd Base",SS:"Shortstop",LF:"Left Field",CF:"Center Field",RF:"Right Field"};
@@ -75,37 +85,45 @@ selectedPlayer:null,
 editingPlayerIdx:null,
 addingPlayer:false,
 inactive:new Set(),
+benchedInnings:{1:[],2:[],3:[],4:[],5:[],6:[]},
 };
+// Safe localStorage - catches SecurityError in sandboxed iframes
+var _ls = (function(){
+  try{ localStorage.setItem('_t','1'); localStorage.removeItem('_t'); return localStorage; }
+  catch(e){ return {getItem:function(){return null;},setItem:function(){},removeItem:function(){}}; }
+})();
+
 function save(){
   try{
-    if(typeof localStorage!=='undefined')
-      localStorage.setItem("dy9u",JSON.stringify(state));
+    var toSave = JSON.parse(JSON.stringify(state));
+    toSave.inactive = Array.from(state.inactive instanceof Set ? state.inactive : new Set());
+    _ls.setItem("dy9u", JSON.stringify(toSave));
   }catch(e){}
 }
+
 function load(){
   try{
-    if(typeof localStorage==='undefined')return;
-    const d=localStorage.getItem("dy9u");
-    if(!d)return;
-    const s=JSON.parse(d);
-    // Validate it's an object before merging
-    if(typeof s!=='object'||s===null)return;
-    Object.assign(state,s);
-    // Migrate old per-inning batting {1:[],2:[],...} to single array
-    if(state.batting&&!Array.isArray(state.batting)){
-      state.batting=state.batting[1]||state.batting[Object.keys(state.batting)[0]]||[];
+    var d = _ls.getItem("dy9u");
+    if(!d) return;
+    var s = JSON.parse(d);
+    if(typeof s !== 'object' || s === null) return;
+    Object.assign(state, s);
+    if(state.batting && !Array.isArray(state.batting)){
+      state.batting = state.batting[1] || state.batting[Object.keys(state.batting)[0]] || [];
     }
-    // Ensure all required keys exist
-    if(!state.innings)state.innings={1:{},2:{},3:{},4:{},5:{},6:{}};
-    if(!state.pitchers)state.pitchers={1:null,2:null,3:null,4:null,5:null,6:null};
-    if(!Array.isArray(state.batting))state.batting=[];
-    if(!Array.isArray(state.players)||!state.players.length)state.players=initialPlayers.map(p=>({...p}));
+    if(!state.innings) state.innings={1:{},2:{},3:{},4:{},5:{},6:{}};
+    if(!state.pitchers) state.pitchers={1:null,2:null,3:null,4:null,5:null,6:null};
+    if(!Array.isArray(state.batting)) state.batting=[];
+    if(!Array.isArray(state.players)||!state.players.length) state.players=initialPlayers.map(function(p){return Object.assign({},p);});
+    if(!state.benchedInnings||typeof state.benchedInnings!=='object') state.benchedInnings={1:[],2:[],3:[],4:[],5:[],6:[]};
+    [1,2,3,4,5,6].forEach(function(i){if(!Array.isArray(state.benchedInnings[i]))state.benchedInnings[i]=[];});
+    state.inactive = new Set(Array.isArray(state.inactive) ? state.inactive : []);
   }catch(e){
-    try{localStorage.removeItem("dy9u");}catch(e2){}
+    try{ _ls.removeItem("dy9u"); }catch(e2){}
   }
+  if(!(state.inactive instanceof Set)) state.inactive = new Set();
 }
 load();
-if(!(state.inactive instanceof Set))state.inactive=new Set();
 function getPlayerByName(n){return state.players.find(p=>p.name===n);}
 function getPlayerPosition(name){
 const pos=state.innings[state.activeInning]||{};
@@ -506,8 +524,34 @@ html+=`</div>
 <div class="action-grid">
 <button class="action-btn" onclick="clearInning()">↺ CLEAR INNING</button>
 <button class="action-btn" onclick="copyPrevious()" ${state.activeInning<=1?'disabled':''}>⎘ COPY PREV INNING</button>
-</div>
 </div>`;
+
+// Bench picker
+const activePlayers = state.players.filter(p=>!state.inactive.has(p.name));
+const benchedNow = state.benchedInnings[state.activeInning]||[];
+const fieldedNow = [...Object.values(currentPositions), state.pitchers[state.activeInning]].filter(Boolean);
+const benchable = activePlayers.filter(p=>!fieldedNow.includes(p.name));
+
+html += `<div style="padding:0 16px 20px">
+<div style="color:#a07050;font-weight:800;font-size:10px;letter-spacing:1px;margin-bottom:8px">&#x26FA; BENCH \u2014 INNING ${state.activeInning}</div>
+<div style="color:#555;font-size:11px;margin-bottom:10px">Tap players not yet fielded to mark them on the bench</div>
+<div class="bench-grid">`;
+
+benchable.forEach(({name,number})=>{
+const isBenched = benchedNow.includes(name);
+html += `<button class="bench-btn${isBenched?' benched':''}" onclick="toggleBenchedInning('${name.replace(/'/g,"\\'")}')">
+${nbadge(number,false)}
+<div style="flex:1;min-width:0">
+<div class="player-fname" style="color:${isBenched?'#a07050':'#ddd'}">${name.split(' ')[0]}</div>
+<div class="player-pos" style="color:${isBenched?'#8B4513':'#444'};font-weight:700">${isBenched?'BENCH':'available'}</div>
+</div>
+</button>`;
+});
+
+if(benchable.length===0){
+html += `<div style="color:#333;font-size:12px;grid-column:1/-1;padding:8px 0">All players are fielded this inning</div>`;
+}
+html += `</div></div>`;
 return html;
 }
 function renderBatting(){
@@ -679,7 +723,9 @@ html+=`<div class="bat-preview-item ${i%2===0?'even':'odd'}">
 });
 html+=`</div>`;
 }
-html+=`<div class="section-label" style="margin-bottom:10px">Download / Share</div>
+html+=`<div class="section-label" style="margin-bottom:10px;margin-top:4px;color:#c53935">NEW GAME</div>
+<button class="clear-game-btn" onclick="clearGame()">🆕 CLEAR ALL — START NEW GAME</button>
+<div class="section-label" style="margin-bottom:10px">Download / Share</div>
 <div class="export-btns">
 <button class="exp-btn primary" onclick="dlText()">📄 TEXT FILE — tap to download / copy</button>
 <button class="exp-btn secondary" onclick="dlCSV()">📊 SPREADSHEET (.csv) — download / copy</button>
@@ -689,6 +735,38 @@ html+=`<div class="section-label" style="margin-bottom:10px">Download / Share</d
 </div>`;
 return html;
 }
+function clearGame(){
+document.getElementById('confirm-modal').classList.add('show');
+}
+function closeConfirm(){
+document.getElementById('confirm-modal').classList.remove('show');
+}
+function confirmClearGame(){
+closeConfirm();
+state.innings={1:{},2:{},3:{},4:{},5:{},6:{}};
+state.pitchers={1:null,2:null,3:null,4:null,5:null,6:null};
+state.batting=[];
+state.benchedInnings={1:[],2:[],3:[],4:[],5:[],6:[]};
+state.selectedPlayer=null;
+state.activeInning=1;
+render();save();
+showToast('Ready for new game!');
+}
+
+function toggleBenchedInning(playerName){
+const inn=state.activeInning;
+const arr=state.benchedInnings[inn]||[];
+if(arr.includes(playerName)){
+state.benchedInnings[inn]=arr.filter(n=>n!==playerName);
+}else{
+state.benchedInnings[inn]=[...arr,playerName];
+// also remove from field position and pitcher for this inning
+Object.keys(state.innings[inn]).forEach(pos=>{if(state.innings[inn][pos]===playerName)delete state.innings[inn][pos];});
+if(state.pitchers[inn]===playerName)state.pitchers[inn]=null;
+}
+render();save();
+}
+
 function renderGame(){
 const hasAny = INNINGS.some(i=>Object.keys(state.innings[i]||{}).length>0||state.pitchers[i]);
 if(!hasAny){
@@ -745,6 +823,17 @@ html+=`<div class="gv-pos-item">
 });
 // pad to even number
 if(filledPos.length%2!==0) html+=`<div class="gv-pos-item"></div>`;
+html+=`</div>`;
+}
+// Bench for this inning
+const benchedThisInn=(state.benchedInnings[inn]||[]);
+if(benchedThisInn.length){
+html+=`<div class="gv-bench-section">
+<div class="gv-bench-label">⛺ BENCH — INNING ${inn}</div>`;
+benchedThisInn.forEach(name=>{
+const p=getPlayerByName(name);
+html+=`<div class="gv-bench-row"><div class="gv-bench-num">#${p?.number??'?'}</div><div class="gv-bench-name">${name}</div></div>`;
+});
 html+=`</div>`;
 }
 html+=`</div>`;
