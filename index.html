@@ -317,6 +317,14 @@ function save(){
 }
 
 function load(){
+  // Version check - wipe old incompatible saved data
+  var VERSION="3";
+  var savedVersion=LS.get("dy9u_v");
+  if(savedVersion!==VERSION){
+    LS.del("dy9u2");
+    LS.set("dy9u_v",VERSION);
+    return; // use default state
+  }
   try{
     var raw=LS.get("dy9u2");
     if(!raw)return;
@@ -617,6 +625,11 @@ function doPDF(){
 // ── Render ──
 function rfNb(num,sel){return'<div class="nbadge'+(sel?' s':'')+'">#'+num+'</div>';}
 
+function handlePosClick(btn){
+  var posId=btn.dataset.pos;
+  if(S.sel){assignPos(posId);}
+  else if((S.fields[S.inn]||{})[posId]){clearPos(posId);}
+}
 function renderField(){
   var pos=S.fields[S.inn]||{};
   var filled=Object.keys(pos).length;
@@ -625,7 +638,7 @@ function renderField(){
   active.forEach(function(pl){
     var fp=fieldedPos(pl.name);
     var sel=(S.sel===pl.name);
-    html+='<button class="pbtn'+(sel?' sel':'')+(fp&&!sel?' assigned':'')+'" onclick="selPlayer(''+pl.name.replace(/'/g,"\'")+'')">'+rfNb(pl.number,sel)+'<div style="flex:1;min-width:0"><div class="pfname">'+pl.name.split(' ')[0]+'</div><div class="ppos">'+(fp||'unassigned')+'</div></div></button>';
+    html+='<button class="pbtn'+(sel?' sel':'')+(fp&&!sel?' assigned':'')+'" onclick="selPlayer(this.dataset.n)" data-n="'+pl.name.replace(/"/g,'&quot;')+'">'+rfNb(pl.number,sel)+'<div style="flex:1;min-width:0"><div class="pfname">'+pl.name.split(' ')[0]+'</div><div class="ppos">'+(fp||'unassigned')+'</div></div></button>';
   });
   html+='</div></div><div class="sec" style="padding-top:6px"><div class="lbl">&#9313; Tap a position'+(S.sel?' &mdash; placing <b style="color:#fff;font-weight:500">'+S.sel.split(' ')[0]+'</b>':'')+'</div>';
   // Field SVG
@@ -634,8 +647,7 @@ function renderField(){
   html+='<path d="M32,86 L50,52 L68,86 Z" fill="#7a5510" opacity=".6"/><ellipse cx="50" cy="56" rx="3" ry="2" fill="#8B6914" opacity=".8"/><rect x="48.5" y="44" width="3" height="3" rx=".3" fill="white" transform="rotate(45 50 45.5)"/><rect x="62" y="51" width="3" height="3" rx=".3" fill="white" transform="rotate(45 63.5 52.5)"/><rect x="35" y="51" width="3" height="3" rx=".3" fill="white" transform="rotate(45 36.5 52.5)"/><rect x="48.5" y="70" width="3" height="3" rx=".3" fill="white" transform="rotate(45 50 71.5)"/><line x1="50" y1="71" x2="5" y2="86" stroke="white" stroke-width=".4"/><line x1="50" y1="71" x2="95" y2="86" stroke="white" stroke-width=".4"/><line x1="50" y1="45.5" x2="63.5" y2="52.5" stroke="#8B6914" stroke-width=".5" opacity=".6"/><line x1="63.5" y1="52.5" x2="50" y2="71" stroke="#8B6914" stroke-width=".5" opacity=".6"/><line x1="50" y1="71" x2="36.5" y2="52.5" stroke="#8B6914" stroke-width=".5" opacity=".6"/><line x1="36.5" y1="52.5" x2="50" y2="45.5" stroke="#8B6914" stroke-width=".5" opacity=".6"/></svg>';
   FP.forEach(function(fp){
     var asgn=pos[fp.id];var p=asgn?byName(asgn):null;
-    var onclick=S.sel?'assignPos(''+fp.id+'')':asgn?'clearPos(''+fp.id+'')':null;
-    html+='<div class="pin" style="left:'+fp.x+'%;top:'+fp.y+'%"><button class="ppin'+(asgn?' filled':'')+(S.sel?' targeting':'')+'" '+(onclick?'onclick="'+onclick+'"':'')+'>'+( asgn?'#'+(p?p.number:'?'):fp.id)+'</button><div class="plbl'+(asgn?' filled':'')+'">'+(asgn?asgn.split(' ')[0].toUpperCase():fp.id)+'</div></div>';
+    html+='<div class="pin" style="left:'+fp.x+'%;top:'+fp.y+'%"><button class="ppin'+(asgn?' filled':'')+(S.sel?' targeting':'')+'" data-pos="'+fp.id+'" onclick="handlePosClick(this)">'+(asgn?'#'+(p?p.number:'?'):fp.id)+'</button><div class="plbl'+(asgn?' filled':'')+'">'+(asgn?asgn.split(' ')[0].toUpperCase():fp.id)+'</div></div>';
   });
   html+='</div>';
   // Progress
@@ -652,7 +664,7 @@ function renderField(){
     html+='<div class="bench-sub">Tap to mark a player on the bench this inning</div><div class="bgrid">';
     benchable.forEach(function(pl){
       var b=isBenched(pl.name);
-      html+='<button class="bbtn'+(b?' benched':'')+'" onclick="toggleBench(''+pl.name.replace(/'/g,"\'")+'')">'+rfNb(pl.number,false)+'<div style="flex:1;min-width:0"><div class="pfname" style="color:'+(b?'#a07050':'#ddd')+'">'+pl.name.split(' ')[0]+'</div><div class="ppos" style="color:'+(b?'#8B4513':'#444')+';font-weight:700">'+(b?'BENCH':'available')+'</div></div></button>';
+      html+='<button class="bbtn'+(b?' benched':'')+'" data-n="'+pl.name.replace(/"/g,'&quot;')+'" onclick="toggleBench(this.dataset.n)">'+rfNb(pl.number,false)+'<div style="flex:1;min-width:0"><div class="pfname" style="color:'+(b?'#a07050':'#ddd')+'">'+pl.name.split(' ')[0]+'</div><div class="ppos" style="color:'+(b?'#8B4513':'#444')+';font-weight:700">'+(b?'BENCH':'available')+'</div></div></button>';
     });
     html+='</div>';
   }
@@ -666,14 +678,14 @@ function renderBat(){
   else{
     S.batting.forEach(function(name,i){
       var p=byName(name);
-      html+='<div class="bat-item"><div class="bat-num">'+(i+1)+'</div>'+rfNb(p?p.number:'?',false)+'<span style="flex:1;font-weight:600;font-size:13px">'+name+'</span><div class="arr-col"><button class="arr" onclick="moveBat('+i+',-1)" '+(i===0?'disabled':'')+'>&#9650;</button><button class="arr" onclick="moveBat('+i+',1)" '+(i===S.batting.length-1?'disabled':'')+'>&#9660;</button></div><button class="rm-btn" onclick="removeBat(''+name.replace(/'/g,"\'")+'')">&#10005;</button></div>';
+      html+='<div class="bat-item"><div class="bat-num">'+(i+1)+'</div>'+rfNb(p?p.number:'?',false)+'<span style="flex:1;font-weight:600;font-size:13px">'+name+'</span><div class="arr-col"><button class="arr" onclick="moveBat('+i+',-1)" '+(i===0?'disabled':'')+'>&#9650;</button><button class="arr" onclick="moveBat('+i+',1)" '+(i===S.batting.length-1?'disabled':'')+'>&#9660;</button></div><button class="rm-btn" data-n="'+name.replace(/"/g,'&quot;')+'" onclick="removeBat(this.dataset.n)">&#10005;</button></div>';
     });
   }
   var unset=S.players.filter(function(p){return !isOut(p.name)&&S.batting.indexOf(p.name)<0;});
   if(unset.length){
     html+='<div class="lbl" style="margin-top:12px">Add to order</div>';
     unset.forEach(function(pl){
-      html+='<button class="add-item" onclick="addBat(''+pl.name.replace(/'/g,"\'")+'')"><span style="color:var(--gl);font-weight:900;font-size:16px">+</span>'+rfNb(pl.number,false)+'<span style="flex:1;color:#888;font-weight:600;font-size:13px">'+pl.name+'</span></button>';
+      html+='<button class="add-item" data-n="'+pl.name.replace(/"/g,'&quot;')+'" onclick="addBat(this.dataset.n)"><span style="color:var(--gl);font-weight:900;font-size:16px">+</span>'+rfNb(pl.number,false)+'<span style="flex:1;color:#888;font-weight:600;font-size:13px">'+pl.name+'</span></button>';
     });
   }
   html+='</div>';return html;
@@ -689,7 +701,7 @@ function renderPitch(){
   activePlayers().forEach(function(pl){
     var isA=(S.pitchers[S.inn]===pl.name);
     var innings=INN.filter(function(i){return S.pitchers[i]===pl.name;});
-    html+='<button class="pbtn'+(isA?' sel':'')+'" onclick="togglePitch(''+pl.name.replace(/'/g,"\'")+'')">'+rfNb(pl.number,isA)+'<div><div class="pfname" style="color:'+(isA?'var(--y)':'#ddd')+'">'+pl.name.split(' ')[0]+'</div>'+(innings.length?'<div style="font-size:9px;color:'+(isA?'rgba(255,255,255,.6)':'var(--gl)')+';font-weight:600">inn '+innings.join(',')+'</div>':'')+'</div></button>';
+    html+='<button class="pbtn'+(isA?' sel':'')+'" data-n="'+pl.name.replace(/"/g,'&quot;')+'" onclick="togglePitch(this.dataset.n)">'+rfNb(pl.number,isA)+'<div><div class="pfname" style="color:'+(isA?'var(--y)':'#ddd')+'">'+pl.name.split(' ')[0]+'</div>'+(innings.length?'<div style="font-size:9px;color:'+(isA?'rgba(255,255,255,.6)':'var(--gl)')+';font-weight:600">inn '+innings.join(',')+'</div>':'')+'</div></button>';
   });
   html+='</div></div>';return html;
 }
@@ -699,18 +711,18 @@ function renderRoster(){
   var out=S.players.filter(function(p){return isOut(p.name);});
   var html='<div class="sec"><div class="ros-hdr"><div class="lbl-y" style="margin:0">Roster &middot; '+active.length+' active'+(out.length?' &middot; '+out.length+' out':'')+'</div><button class="add-ros-btn" onclick="S.adding=true;render()">+ ADD</button></div>';
   if(S.adding){
-    html+='<div class="add-form"><div class="add-row"><input id="n-name" placeholder="Player name" onkeydown="if(event.key==='Enter')addPlayer();if(event.key==='Escape')cancelAdd();" autofocus><input id="n-num" placeholder="#" type="number" style="width:60px;color:var(--y);font-weight:700;text-align:center"></div><div style="display:flex;gap:8px"><button class="btn-ok" style="flex:1" onclick="addPlayer()">ADD</button><button class="btn-x" onclick="cancelAdd()">&#10005;</button></div></div>';
+    html+='<div class="add-form"><div class="add-row"><input id="n-name" placeholder="Player name" onkeydown="var k=event.key;if(k==&quot;Enter&quot;)addPlayer();if(k==&quot;Escape&quot;)cancelAdd();" autofocus><input id="n-num" placeholder="#" type="number" style="width:60px;color:var(--y);font-weight:700;text-align:center"></div><div style="display:flex;gap:8px"><button class="btn-ok" style="flex:1" onclick="addPlayer()">ADD</button><button class="btn-x" onclick="cancelAdd()">&#10005;</button></div></div>';
   }
   S.players.forEach(function(pl,idx){
     var out=isOut(pl.name);var editing=(S.editing===idx);
     html+='<div class="ros-item'+(out?' out':'')+'"><div class="ros-num'+(out?' out':'')+'">#'+pl.number+'</div>';
     if(editing){
-      html+='<div class="il-edit"><input id="e-name" value="'+pl.name+'" onkeydown="if(event.key==='Enter')saveEdit();if(event.key==='Escape')cancelEdit();" autofocus><input id="e-num" value="'+pl.number+'" type="number"></div><button class="btn-ok" style="padding:6px 10px;font-size:12px" onclick="saveEdit()">&#10003;</button>';
+      html+='<div class="il-edit"><input id="e-name" value="'+pl.name+'" onkeydown="var k=event.key;if(k==&quot;Enter&quot;)saveEdit();if(k==&quot;Escape&quot;)cancelEdit();" autofocus><input id="e-num" value="'+pl.number+'" type="number"></div><button class="btn-ok" style="padding:6px 10px;font-size:12px" onclick="saveEdit()">&#10003;</button>';
     } else {
       html+='<span class="ros-name'+(out?' out':'')+'" onclick="startEdit('+idx+')">'+pl.name+'</span><button class="edit-btn" onclick="startEdit('+idx+')">&#9998;</button>';
     }
     html+='<button class="out-btn '+(out?'is-out':'is-in')+'" onclick="toggleOut('+idx+')">'+(out?'&#10003; IN':'OUT')+'</button>';
-    html+='<button class="del-btn" onclick="if(window.confirm?window.confirm('Delete '+pl.name+'?'):true)delPlayer('+idx+')">&#128465;</button>';
+        html+='<button class="del-btn" data-idx="'+idx+'" onclick="delPlayer(parseInt(this.dataset.idx))">&#128465;</button>';
     html+='</div>';
   });
   html+='<div class="footer"><div class="footer-m">ONE TEAM. ONE GOAL.</div><div class="footer-s">ALL STARS. ALL HEART.</div></div></div>';
@@ -772,7 +784,7 @@ function renderExport(){
   }
   // Buttons
   html+='<div class="lbl" style="margin-top:4px;margin-bottom:10px">Download &amp; Share</div><div class="exp-btns">';
-  html+='<button class="exp-btn pri" onclick="dlFile(buildText(),'DY-Lineup.txt','text/plain;charset=utf-8')">&#128196; DOWNLOAD TEXT (.txt)</button>';
+  html+='<button class="exp-btn pri" onclick="dlFile(buildText(),&quot;DY-Lineup.txt&quot;,&quot;text/plain;charset=utf-8&quot;)">&#128196; DOWNLOAD TEXT (.txt)</button>';
   html+='<button class="exp-btn sec" onclick="dlCSV()">&#128202; DOWNLOAD SPREADSHEET (.csv)</button>';
   html+='<button class="exp-btn sec" style="background:#0f2e14;color:var(--y);border-color:var(--g)" onclick="doPDF()">&#128424; PRINT / SAVE AS PDF</button>';
   html+='<button class="exp-btn ter" onclick="showOverlay(buildText())">&#128203; COPY TO CLIPBOARD</button>';
@@ -800,7 +812,18 @@ function render(){
   var ei=document.getElementById("e-name");if(ei)setTimeout(function(){ei.focus();},50);
 }
 
-render();
+try{render();}catch(e){
+  var rb=document.getElementById("content");
+  rb.innerHTML="";
+  var rd=document.createElement("div");
+  rd.style.cssText="padding:30px;text-align:center";
+  rd.innerHTML="<div style=\"font-size:40px\">&#9888;</div><div style=\"color:#e8e800;font-weight:900;font-size:16px;margin:12px 0\">Something went wrong</div><div style=\"color:#666;font-size:12px;margin-bottom:24px\">Tap to reset</div>";
+  var resetBtn=document.createElement("button");
+  resetBtn.textContent="RESET APP";
+  resetBtn.style.cssText="background:#1a5c2a;border:1px solid #e8e800;border-radius:10px;color:#e8e800;font-weight:800;font-size:14px;padding:14px 24px";
+  resetBtn.onclick=function(){LS.del("dy9u2");LS.del("dy9u_v");location.reload();};
+  rd.appendChild(resetBtn);rb.appendChild(rd);
+}
 </script>
 </body>
 </html>
